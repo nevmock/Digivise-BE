@@ -3,9 +3,12 @@ package org.nevmock.digivise.application.service;
 import lombok.RequiredArgsConstructor;
 import org.nevmock.digivise.application.dto.merchant.MerchantRequestDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
+import org.nevmock.digivise.domain.model.KPI;
 import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.model.User;
+import org.nevmock.digivise.domain.port.in.KPIService;
 import org.nevmock.digivise.domain.port.in.MerchantService;
+import org.nevmock.digivise.domain.port.out.KPIRepository;
 import org.nevmock.digivise.domain.port.out.MerchantRepository;
 import org.nevmock.digivise.domain.port.out.UserRepository;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,7 @@ public class MerchantServiceImpl implements MerchantService {
 
     private final MerchantRepository merchantRepository;
     private final UserRepository userRepository;
+    private final KPIRepository kpiRepository;
 
     @Override
     public MerchantResponseDto createMerchant(MerchantRequestDto merchant) {
@@ -36,7 +40,16 @@ public class MerchantServiceImpl implements MerchantService {
         newMerchant.setCreatedAt(new Timestamp(System.currentTimeMillis()));
         newMerchant.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
 
+        KPI kpi = new KPI();
+
+        kpi.setId(UUID.randomUUID());
+        kpi.setCpc(0.0);
+        kpi.setAcos(0.0);
+        kpi.setCtr(0.0);
+        kpi.setMerchant(newMerchant);
+
         merchantRepository.save(newMerchant);
+        kpiRepository.save(kpi);
 
         return toDto(newMerchant);
     }

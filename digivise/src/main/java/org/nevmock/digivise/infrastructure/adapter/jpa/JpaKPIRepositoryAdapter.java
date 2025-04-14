@@ -43,6 +43,6 @@ public class JpaKPIRepositoryAdapter implements KPIRepository {
 
     @Override
     public List<KPI> findByUserId(UUID userId) {
-        return jpaRepository.findbyUser_Id(userId);
+        return jpaRepository.findByUser_Id(userId);
     }
 }
