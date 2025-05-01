@@ -10,12 +10,16 @@ import org.nevmock.digivise.domain.port.in.KPIService;
 import org.nevmock.digivise.domain.port.out.KPIRepository;
 import org.nevmock.digivise.domain.port.out.MerchantRepository;
 import org.nevmock.digivise.domain.port.out.UserRepository;
+import org.nevmock.digivise.infrastructure.config.exceptions.ForbiddenException;
 import org.nevmock.digivise.infrastructure.config.exceptions.NotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.nevmock.digivise.utils.UtilsKt.getCurrentUser;
 
 @Service
 @RequiredArgsConstructor
@@ -97,8 +101,15 @@ public class KPIServiceImpl implements KPIService {
     public KPIResponseDto updateKPI(KPIRequestDto kpi) {
         Optional<KPI> existingKPI = kpiRepository.findByMerchantId(kpi.getMerchantId());
 
+        User user = Objects.requireNonNull(getCurrentUser(userRepository))
+                .orElseThrow(() -> new NotFoundException("User not found!"));
+
         if (existingKPI.isEmpty()) {
             throw new NotFoundException("KPI not found with Merchant ID: " + kpi.getMerchantId());
+        }
+
+        if (!existingKPI.get().getUser().getId().equals(user.getId())) {
+            throw new ForbiddenException("Unauthorized access to KPI with Merchant ID: " + kpi.getMerchantId());
         }
 
         KPI updatedKPI = existingKPI.get();

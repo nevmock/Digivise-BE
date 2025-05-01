@@ -1,9 +1,14 @@
 package org.nevmock.digivise.application.service;
 
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
+import org.nevmock.digivise.domain.model.KPI;
+import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.model.mongo.ads.ProductAds;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
+import org.nevmock.digivise.domain.port.out.KPIRepository;
+import org.nevmock.digivise.domain.port.out.MerchantRepository;
 import org.nevmock.digivise.domain.port.out.ProductAdsRepository;
+import org.nevmock.digivise.utils.Recommendation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -16,11 +21,19 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.nevmock.digivise.utils.MathKt;
+
 @Service
 public class ProductAdsServiceImpl implements ProductAdsService {
 
     @Autowired
     ProductAdsRepository productAdsRepository;
+
+    @Autowired
+    KPIRepository kpiRepository;
+
+    @Autowired
+    MerchantRepository merchantRepository;
 
     public List<ProductAdsResponseDto> findAll() {
         return productAdsRepository.findAll().stream()
@@ -97,6 +110,14 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .findByShopIdAndCreatedAtBetween(shopId, from, to, Pageable.unpaged())
                 .getContent();
 
+        Merchant merchant = merchantRepository
+                .findByShopeeMerchantId(shopId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found with ID: " + shopId));
+
+        KPI kpi = kpiRepository
+                .findByMerchantId(merchant.getId())
+                .orElseThrow(() -> new RuntimeException("KPI not found for Merchant ID: " + merchant.getId()));
+
         List<ProductAdsResponseDto> allDtos = allAds.stream()
                 .flatMap(ad -> {
                     String id = ad.getId();
@@ -120,6 +141,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                                     dto.setDailyBudget(e.getCampaign().getDailyBudget());
                                     dto.setImage(e.getImage());
                                     dto.setTitle(e.getTitle());
+                                    dto.setClick(e.getReport().getClick());
+                                    dto.setCtr(e.getReport().getCtr());
                                     return dto;
                                 });
                     }
@@ -137,8 +160,27 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), allDtos.size());
 
+        double averageCpc = allDtos.stream()
+                .mapToDouble(ProductAdsResponseDto::getCpc)
+                .average()
+                .orElse(0.0);
+
+        if (averageCpc > kpi.getMaxCpc()) {
+            allDtos.forEach(dto -> {
+                Recommendation rec = MathKt.formulateRecommendation(
+                        dto.getCpc(),
+                        dto.getAcos(),
+                        dto.getClick(),
+                        kpi
+                );
+
+                String insight = MathKt.renderInsight(rec);
+
+                dto.setInsight(insight);
+            });
+        }
+
         List<ProductAdsResponseDto> pageContent = allDtos.subList(start, end);
         return new PageImpl<>(pageContent, pageable, allDtos.size());
     }
-
 }

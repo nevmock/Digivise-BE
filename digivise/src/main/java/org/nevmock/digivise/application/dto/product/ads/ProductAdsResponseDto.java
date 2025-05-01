@@ -21,4 +21,8 @@ public class ProductAdsResponseDto {
     private String title;
     private String image;
     private Double dailyBudget;
+
+    private Double click;
+    private Double ctr;
+    private String insight;
 }

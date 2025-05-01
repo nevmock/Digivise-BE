@@ -24,8 +24,8 @@ public class KPIController {
         return ResponseEntity.ok().body(createdKPI);
     }
 
-    @PostMapping("/update")
-    public ResponseEntity<KPIResponseDto> updateKPI(KPIRequestDto kpi) {
+    @PutMapping
+    public ResponseEntity<KPIResponseDto> updateKPI(@RequestBody KPIRequestDto kpi) {
         KPIResponseDto updatedKPI = kpiService.updateKPI(kpi);
         return ResponseEntity.ok().body(updatedKPI);
     }
