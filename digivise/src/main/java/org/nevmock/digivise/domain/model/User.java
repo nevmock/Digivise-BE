@@ -3,6 +3,7 @@ package org.nevmock.digivise.domain.model;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
@@ -16,22 +17,17 @@ import java.util.UUID;
 @Builder
 public class User {
 
+    @Column(nullable = false, length = 255)
+    public String password;
     @Id
     @Column(name = "user_id", nullable = false, unique = true)
     private UUID id;
-
     @Column(nullable = false, length = 255)
     private String name;
-
     @Column(nullable = false, unique = true, length = 255)
     private String username;
-
     @Column(nullable = false, unique = true, length = 255)
     private String email;
-
-    @Column(nullable = false, length = 255)
-    public String password;
-
     @Column(name = "created_at", nullable = false)
     private Timestamp createdAt;
 

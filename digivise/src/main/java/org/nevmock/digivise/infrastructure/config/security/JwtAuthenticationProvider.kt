@@ -1,7 +1,6 @@
 package org.nevmock.digivise.infrastructure.config.security
 
 import org.nevmock.digivise.domain.port.out.UserRepository
-import org.nevmock.digivise.utils.hashPasswordBcrypt
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -14,7 +13,7 @@ class JwtAuthenticationProvider(
     private val userRepository: UserRepository,
     private val passwordEncoder: BCryptPasswordEncoder
 ) : AuthenticationProvider {
-    override fun authenticate(authentication: Authentication): Authentication? {
+    override fun authenticate(authentication: Authentication): Authentication {
         val username = authentication.name
         val rawPassword = authentication.credentials.toString()
 

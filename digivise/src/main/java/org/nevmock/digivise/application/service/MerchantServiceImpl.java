@@ -6,7 +6,6 @@ import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 import org.nevmock.digivise.domain.model.KPI;
 import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.model.User;
-import org.nevmock.digivise.domain.port.in.KPIService;
 import org.nevmock.digivise.domain.port.in.MerchantService;
 import org.nevmock.digivise.domain.port.out.KPIRepository;
 import org.nevmock.digivise.domain.port.out.MerchantRepository;
@@ -15,9 +14,12 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.nevmock.digivise.utils.UtilsKt.getCurrentUser;
 
 @Service
 @RequiredArgsConstructor
@@ -29,24 +31,37 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     public MerchantResponseDto createMerchant(MerchantRequestDto merchant) {
-        User user = userRepository.findById(merchant.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + merchant.getUserId()));
+        User user = Objects.requireNonNull(getCurrentUser(userRepository))
+                .orElseThrow(() -> new RuntimeException("User not found!"));
+
 
         Merchant newMerchant = new Merchant();
 
         newMerchant.setId(UUID.randomUUID());
         newMerchant.setMerchantName(merchant.getMerchantName());
         newMerchant.setUser(user);
+        newMerchant.setMerchantShopeeId(merchant.getMerchantShopeeId());
+        newMerchant.setSessionPath(merchant.getSessionPath());
         newMerchant.setCreatedAt(new Timestamp(System.currentTimeMillis()));
         newMerchant.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
 
-        KPI kpi = new KPI();
-
-        kpi.setId(UUID.randomUUID());
-        kpi.setCpc(0.0);
-        kpi.setAcos(0.0);
-        kpi.setCtr(0.0);
-        kpi.setMerchant(newMerchant);
+        KPI kpi = KPI
+                .builder()
+                .user(user)
+                .merchant(newMerchant)
+                .maxAcos(0.0)
+                .maxCpc(0.0)
+                .maxAdjustment(0.0)
+                .multiplier(0.0)
+                .minBidSearch(0.0)
+                .maxKlik(0.0)
+                .minKlik(0.0)
+                .cpcScaleFactor(0.0)
+                .acosScaleFactor(0.0)
+                .id(UUID.randomUUID())
+                .minAdjustment(0.0)
+                .minBidReco(0.0)
+                .build();
 
         merchantRepository.save(newMerchant);
         kpiRepository.save(kpi);
@@ -90,8 +105,8 @@ public class MerchantServiceImpl implements MerchantService {
 
         merchantToUpdate.setMerchantName(updatedMerchant.getMerchantName());
         merchantToUpdate.setSessionPath(updatedMerchant.getSessionPath());
-        merchantToUpdate.setUser(userRepository.findById(updatedMerchant.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + updatedMerchant.getUserId())));
+        merchantToUpdate.setUser(Objects.requireNonNull(getCurrentUser(userRepository))
+                .orElseThrow(() -> new RuntimeException("User not found!")));
         merchantToUpdate.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
 
         merchantRepository.save(merchantToUpdate);
@@ -117,6 +132,7 @@ public class MerchantServiceImpl implements MerchantService {
                 .id(merchant.getId())
                 .merchantName(merchant.getMerchantName())
                 .sessionPath(merchant.getSessionPath())
+                .merchantShopeeId(merchant.getMerchantShopeeId())
                 .createdAt(merchant.getCreatedAt().toString())
                 .userId(merchant.getUser().getId())
                 .build();

@@ -1,7 +1,6 @@
 package org.nevmock.digivise.application.dto.kpi;
 
 import lombok.*;
-import org.nevmock.digivise.domain.model.Merchant;
 
 import java.util.UUID;
 
@@ -11,9 +10,16 @@ import java.util.UUID;
 @NoArgsConstructor
 @Builder
 public class KPIRequestDto {
-    private UUID id;
-    private Double cpc;
-    private Double acos;
-    private Double ctr;
-    private Merchant merchant;
+    private UUID merchantId;
+    private UUID userId;
+
+    private Double maxCpc;
+    private Double maxAcos;
+    private Double cpcScaleFactor;
+    private Double acosScaleFactor;
+    private Double maxKlik;
+    private Double minKlik;
+    private Double minBidSearch;
+    private Double minBidReco;
+    private Double multiplier;
 }

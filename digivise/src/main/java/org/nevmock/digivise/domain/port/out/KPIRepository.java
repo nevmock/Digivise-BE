@@ -8,9 +8,14 @@ import java.util.UUID;
 
 public interface KPIRepository {
     void save(KPI kpi);
+
     Optional<KPI> findKPIById(UUID kpiId);
+
     void deleteByID(UUID kpiId);
+
     List<KPI> findAll();
+
     Optional<KPI> findByMerchantId(UUID merchantId);
+
     List<KPI> findByUserId(UUID userId);
 }

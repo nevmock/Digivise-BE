@@ -37,6 +37,11 @@ public class JpaMerchantRepositoryAdapter implements MerchantRepository {
     }
 
     @Override
+    public Optional<Merchant> findByShopeeMerchantId(String shopeeMerchantId) {
+        return jpaRepository.getMerchantsByMerchantShopeeId(shopeeMerchantId);
+    }
+
+    @Override
     public void deleteById(UUID merchantId) {
         jpaRepository.deleteById(merchantId);
     }

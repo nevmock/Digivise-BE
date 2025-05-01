@@ -33,12 +33,4 @@ public class UserResponseDto implements Serializable {
     private Timestamp updatedAt;
 
     private List<MerchantResponseDto> merchants;
-
-    public UserResponseDto(UUID id, String name, String email, String createdAt, String updatedAt) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-        this.createdAt = Timestamp.valueOf(createdAt);
-        this.updatedAt = Timestamp.valueOf(updatedAt);
-    }
 }

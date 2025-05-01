@@ -8,8 +8,14 @@ import java.util.UUID;
 
 public interface MerchantRepository {
     void save(Merchant merchant);
+
     Optional<Merchant> findById(UUID merchantId);
+
     List<Merchant> findAll();
+
     List<Merchant> findByUserId(UUID userId);
+
+    Optional<Merchant> findByShopeeMerchantId(String shopeeMerchantId);
+
     void deleteById(UUID merchantId);
 }

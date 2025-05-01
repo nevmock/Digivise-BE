@@ -20,6 +20,9 @@ public class Merchant {
     @Column(name = "merchant_id", nullable = false, unique = true)
     private UUID id;
 
+    @Column(name = "merchant_shopee_id", nullable = false, unique = true)
+    private String merchantShopeeId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

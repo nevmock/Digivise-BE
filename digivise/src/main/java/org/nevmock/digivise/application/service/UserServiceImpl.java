@@ -7,7 +7,6 @@ import org.nevmock.digivise.domain.model.User;
 import org.nevmock.digivise.domain.port.in.UserService;
 import org.nevmock.digivise.domain.port.out.UserRepository;
 import org.nevmock.digivise.infrastructure.config.exceptions.AlreadyExistException;
-import org.nevmock.digivise.utils.UtilsKt;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;

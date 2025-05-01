@@ -11,5 +11,6 @@ import java.util.UUID;
 @EnableJpaRepositories(basePackageClasses = KPIJpaRepository.class)
 public interface KPIJpaRepository extends JpaRepository<KPI, UUID> {
     List<KPI> findByUser_Id(UUID userId);
+
     Optional<KPI> findByMerchant_Id(UUID merchantId);
 }

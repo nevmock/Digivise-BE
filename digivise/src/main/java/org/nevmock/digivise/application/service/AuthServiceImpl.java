@@ -2,16 +2,14 @@ package org.nevmock.digivise.application.service;
 
 import org.nevmock.digivise.application.dto.user.UserRequestDto;
 import org.nevmock.digivise.domain.port.in.AuthService;
-
 import org.nevmock.digivise.domain.port.in.UserService;
-import org.nevmock.digivise.domain.port.out.UserRepository;
 import org.nevmock.digivise.infrastructure.adapter.security.JwtTokenProvider;
 import org.nevmock.digivise.infrastructure.adapter.security.RefreshTokenProvider;
-import org.springframework.stereotype.Service;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
 
 @Service
 public class AuthServiceImpl implements AuthService {

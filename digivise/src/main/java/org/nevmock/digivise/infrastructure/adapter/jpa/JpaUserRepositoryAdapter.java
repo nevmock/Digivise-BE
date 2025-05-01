@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.nevmock.digivise.domain.model.User;
 import org.nevmock.digivise.domain.port.out.UserRepository;
 import org.nevmock.digivise.infrastructure.jpa.UserJpaRepository;
-
 import org.springframework.stereotype.Component;
 
 import java.util.List;
