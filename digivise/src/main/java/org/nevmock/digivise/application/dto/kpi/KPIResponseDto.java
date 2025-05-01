@@ -18,6 +18,8 @@ public class KPIResponseDto {
     private Double maxAcos;
     private Double cpcScaleFactor;
     private Double acosScaleFactor;
+    private Double maxAdjustment;
+    private Double minAdjustment;
     private Double maxKlik;
     private Double minKlik;
     private Double minBidSearch;
