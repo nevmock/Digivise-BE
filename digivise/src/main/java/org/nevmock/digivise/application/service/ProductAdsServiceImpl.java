@@ -93,7 +93,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             LocalDateTime to,
             Pageable pageable
     ) {
-        // Step 1: Ambil semua ProductAds (tanpa pageable) lalu filter nanti
         List<ProductAds> allAds = productAdsRepository
                 .findByShopIdAndCreatedAtBetween(shopId, from, to, Pageable.unpaged())
                 .getContent();
