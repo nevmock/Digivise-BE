@@ -1,7 +1,9 @@
 package org.nevmock.digivise.domain.port.in;
 
+import org.nevmock.digivise.application.dto.auth.LoginResponseDto;
+
 public interface AuthService {
-    String login(String username, String password);
+    LoginResponseDto login(String username, String password);
 
     void logout(String token);
 

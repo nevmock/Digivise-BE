@@ -1,6 +1,10 @@
 package org.nevmock.digivise.application.service;
 
+import org.nevmock.digivise.application.dto.auth.LoginResponseDto;
+import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 import org.nevmock.digivise.application.dto.user.UserRequestDto;
+import org.nevmock.digivise.application.dto.user.UserResponseDto;
+import org.nevmock.digivise.domain.model.User;
 import org.nevmock.digivise.domain.port.in.AuthService;
 import org.nevmock.digivise.domain.port.in.UserService;
 import org.nevmock.digivise.infrastructure.adapter.security.JwtTokenProvider;
@@ -10,6 +14,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import java.util.stream.Collectors;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -30,13 +36,32 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String login(String username, String password) {
+    public LoginResponseDto login(String username, String password) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        return jwtTokenProvider.generateToken(username);
+        String token = jwtTokenProvider.generateToken(username);
+
+        UserResponseDto user = userService.getUserByUsername(authentication.getName());
+
+        return LoginResponseDto
+                .builder()
+                .accessToken(token)
+                .username(username)
+                .userId(user.getId())
+                .merchants(user.getMerchants().stream().map(merchant -> MerchantResponseDto
+                        .builder()
+                        .id(merchant.getId())
+                        .merchantName(merchant.getMerchantName())
+                        .merchantShopeeId(merchant.getMerchantShopeeId())
+                        .sessionPath(merchant.getSessionPath())
+                        .userId(user.getId())
+                        .createdAt(merchant.getCreatedAt())
+                        .updatedAt(merchant.getUpdatedAt())
+                        .build()).collect(Collectors.toList()))
+                .build();
     }
 
     @Override

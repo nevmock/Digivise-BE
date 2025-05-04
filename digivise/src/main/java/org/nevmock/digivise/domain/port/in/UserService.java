@@ -11,6 +11,8 @@ public interface UserService {
 
     UserResponseDto getUserById(UUID userId);
 
+    UserResponseDto getUserByUsername(String username);
+
     List<UserResponseDto> getAllUsers();
 
     UserResponseDto updateUser(UUID userId, UserRequestDto user);

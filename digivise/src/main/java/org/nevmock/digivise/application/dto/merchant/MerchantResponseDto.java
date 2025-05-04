@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Getter
@@ -20,9 +22,9 @@ public class MerchantResponseDto {
 
     private String merchantShopeeId;
 
-    private String createdAt;
+    private Timestamp createdAt;
 
-    private String updatedAt;
+    private Timestamp updatedAt;
 
     private UUID userId;
 }

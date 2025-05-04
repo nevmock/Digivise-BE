@@ -133,7 +133,7 @@ public class MerchantServiceImpl implements MerchantService {
                 .merchantName(merchant.getMerchantName())
                 .sessionPath(merchant.getSessionPath())
                 .merchantShopeeId(merchant.getMerchantShopeeId())
-                .createdAt(merchant.getCreatedAt().toString())
+                .createdAt(merchant.getCreatedAt())
                 .userId(merchant.getUser().getId())
                 .build();
     }

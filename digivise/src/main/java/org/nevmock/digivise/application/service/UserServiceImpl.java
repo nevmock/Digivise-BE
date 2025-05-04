@@ -62,6 +62,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserResponseDto getUserByUsername(String username) {
+        User newUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+
+        return toDto(newUser);
+    }
+
+    @Override
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::toDto)
@@ -93,6 +101,7 @@ public class UserServiceImpl implements UserService {
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
+                .merchants(user.getMerchants())
                 .createdAt(Timestamp.valueOf(user.getCreatedAt().toString()))
                 .updatedAt(Timestamp.valueOf(user.getUpdatedAt().toString()))
                 .build();

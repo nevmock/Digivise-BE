@@ -2,6 +2,7 @@ package org.nevmock.digivise.application.dto.user;
 
 import lombok.*;
 import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
+import org.nevmock.digivise.domain.model.Merchant;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -32,5 +33,5 @@ public class UserResponseDto implements Serializable {
     @Getter
     private Timestamp updatedAt;
 
-    private List<MerchantResponseDto> merchants;
+    private List<Merchant> merchants;
 }
