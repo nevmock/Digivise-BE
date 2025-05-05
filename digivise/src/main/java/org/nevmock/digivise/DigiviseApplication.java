@@ -24,7 +24,8 @@ public class DigiviseApplication {
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(false)
-                        .allowedOrigins("http://localhost:5173");
+                        .allowedOrigins("http://localhost:5173")
+                        .allowedOrigins("http://109.123.232.99:5175");
             }
         };
     }
