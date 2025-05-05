@@ -26,8 +26,12 @@ open class SecurityConfig(
     @Bean
     open fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http
+            .cors {
+                it.disable()
+            }
             .authorizeHttpRequests { auth ->
-                auth.requestMatchers("/auth/**").permitAll()
+                auth
+                    .requestMatchers("/auth/**").permitAll()
                     .anyRequest().authenticated()
             }
             .sessionManagement {
