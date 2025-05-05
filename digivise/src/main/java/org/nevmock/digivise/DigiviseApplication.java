@@ -19,7 +19,8 @@ public class DigiviseApplication {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api").allowedOrigins("http://localhost:5173");
+                registry.addMapping("/api/**").allowedOrigins("http://localhost:5173", "109.123.232.99:5175");
+                registry.addMapping("/auth/**").allowedOrigins("http://localhost:5173", "109.123.232.99:5175");
             }
         };
     }
