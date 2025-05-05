@@ -23,6 +23,7 @@ public class DigiviseApplication {
                         .allowedOrigins("*")
                         .allowedMethods("*")
                         .allowedHeaders("*")
+                        .allowCredentials(true)
                         .allowedOrigins("http://localhost:5173");
             }
         };
