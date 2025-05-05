@@ -55,6 +55,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                                     dto.setCampaignId(e.getCampaign().getCampaignId());
                                     dto.setAcos(e.getReport().getBroad_gmv());
                                     dto.setCpc(e.getReport().getCpc());
+                                    dto.setState(e.getState());
                                     return dto;
                                 });
                     }
@@ -143,6 +144,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                                     dto.setTitle(e.getTitle());
                                     dto.setClick(e.getReport().getClick());
                                     dto.setCtr(e.getReport().getCtr());
+                                    dto.setState(e.getState());
                                     return dto;
                                 });
                     }

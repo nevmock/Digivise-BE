@@ -15,4 +15,6 @@ public class Entry {
     private Campaign campaign;
     @Field("image")
     private String image;
+    @Field("state")
+    private String state;
 }

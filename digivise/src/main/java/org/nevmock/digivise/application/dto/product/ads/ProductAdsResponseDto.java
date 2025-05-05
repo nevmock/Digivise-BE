@@ -25,4 +25,6 @@ public class ProductAdsResponseDto {
     private Double click;
     private Double ctr;
     private String insight;
+
+    private String state;
 }
