@@ -22,7 +22,8 @@ public class DigiviseApplication {
                 registry.addMapping("/**")
                         .allowedOrigins("*")
                         .allowedMethods("*")
-                        .allowedHeaders("*");
+                        .allowedHeaders("*")
+                        .allowedOrigins("http://localhost:5173");
             }
         };
     }
