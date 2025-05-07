@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.nevmock.digivise.application.dto.kpi.KPIResponseDto;
 
 import java.sql.Timestamp;
 import java.time.LocalTime;
@@ -27,4 +28,6 @@ public class MerchantResponseDto {
     private Timestamp updatedAt;
 
     private UUID userId;
+
+    private KPIResponseDto kpi;
 }

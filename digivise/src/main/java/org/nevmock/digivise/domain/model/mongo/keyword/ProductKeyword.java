@@ -30,6 +30,21 @@ public class ProductKeyword {
     @Field("validation_error_list")
     private String validationErrorList;
 
+    @Field("shop_id")
+    private String shopId;
+
     @Field("data")
     private DataWrapper data;
+
+    @Field("createdAt")
+    private String createdAt;
+
+    @Field("from")
+    private String from;
+
+    @Field("to")
+    private String to;
+
+    @Field("updatedAt")
+    private String updatedAt;
 }

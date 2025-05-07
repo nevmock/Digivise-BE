@@ -1,6 +1,7 @@
 package org.nevmock.digivise.application.service;
 
 import lombok.RequiredArgsConstructor;
+import org.nevmock.digivise.application.dto.kpi.KPIResponseDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantRequestDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 import org.nevmock.digivise.domain.model.KPI;
@@ -13,10 +14,7 @@ import org.nevmock.digivise.domain.port.out.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.nevmock.digivise.utils.UtilsKt.getCurrentUser;
@@ -66,7 +64,7 @@ public class MerchantServiceImpl implements MerchantService {
         merchantRepository.save(newMerchant);
         kpiRepository.save(kpi);
 
-        return toDto(newMerchant);
+        return toDto(newMerchant, kpi);
     }
 
     @Override
@@ -74,28 +72,44 @@ public class MerchantServiceImpl implements MerchantService {
         Merchant merchant = merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new RuntimeException("Merchant not found with ID: " + merchantId));
 
-        return toDto(merchant);
+        KPI kpi = kpiRepository.findByMerchantId(merchantId)
+                .orElseThrow(() -> new RuntimeException("KPI not found with Merchant ID: " + merchantId));
+
+        return toDto(merchant, kpi);
     }
 
     @Override
     public List<MerchantResponseDto> getAllMerchants() {
-        return merchantRepository.findAll().stream()
-                .map(this::toDto)
+        List<Merchant> merchants = merchantRepository.findAll();
+        List<KPI> kpiList = kpiRepository.findAll();
+
+        Map<UUID, KPI> merchantIdToKpi = kpiList.stream()
+                .collect(Collectors.toMap(k -> k.getMerchant().getId(), k -> k));
+
+        return merchants.stream()
+                .map(m -> toDto(m, merchantIdToKpi.get(m.getId())))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<MerchantResponseDto> getMerchantsByUserId(UUID userId) {
-        List<Merchant> merchant = merchantRepository.findByUserId(userId);
+        List<Merchant> merchants = merchantRepository.findByUserId(userId);
+        List<KPI> kpiList = kpiRepository.findByUserId(userId);
 
-        return merchant.stream()
-                .map(this::toDto)
+        Map<UUID, KPI> merchantIdToKpi = kpiList.stream()
+                .collect(Collectors.toMap(k -> k.getMerchant().getId(), k -> k));
+
+        return merchants.stream()
+                .map(m -> toDto(m, merchantIdToKpi.get(m.getId())))
                 .collect(Collectors.toList());
     }
 
     @Override
     public MerchantResponseDto updateMerchant(UUID merchantId, MerchantRequestDto updatedMerchant) {
         Optional<Merchant> existingMerchant = merchantRepository.findById(merchantId);
+
+        KPI existingKPI = kpiRepository.findByMerchantId(merchantId)
+                .orElseThrow(() -> new RuntimeException("KPI not found with Merchant ID: " + merchantId));
 
         if (existingMerchant.isEmpty()) {
             throw new RuntimeException("Merchant not found with ID: " + merchantId);
@@ -111,7 +125,9 @@ public class MerchantServiceImpl implements MerchantService {
 
         merchantRepository.save(merchantToUpdate);
 
-        return toDto(merchantToUpdate);
+
+
+        return toDto(merchantToUpdate, existingKPI);
     }
 
     @Override
@@ -127,7 +143,25 @@ public class MerchantServiceImpl implements MerchantService {
         }
     }
 
-    private MerchantResponseDto toDto(Merchant merchant) {
+    private MerchantResponseDto toDto(Merchant merchant, KPI kpi) {
+        KPIResponseDto kpiResp = KPIResponseDto
+                .builder()
+                .id(kpi.getId())
+                .merchantId(kpi.getMerchant().getId())
+                .userId(kpi.getUser().getId())
+                .maxCpc(kpi.getMaxCpc())
+                .maxAcos(kpi.getMaxAcos())
+                .cpcScaleFactor(kpi.getCpcScaleFactor())
+                .acosScaleFactor(kpi.getAcosScaleFactor())
+                .maxAdjustment(kpi.getMaxAdjustment())
+                .minAdjustment(kpi.getMinAdjustment())
+                .maxKlik(kpi.getMaxKlik())
+                .minKlik(kpi.getMinKlik())
+                .minBidSearch(kpi.getMinBidSearch())
+                .minBidReco(kpi.getMinBidReco())
+                .multiplier(kpi.getMultiplier())
+                .build();
+
         return MerchantResponseDto.builder()
                 .id(merchant.getId())
                 .merchantName(merchant.getMerchantName())
@@ -135,6 +169,9 @@ public class MerchantServiceImpl implements MerchantService {
                 .merchantShopeeId(merchant.getMerchantShopeeId())
                 .createdAt(merchant.getCreatedAt())
                 .userId(merchant.getUser().getId())
-                .build();
+                .kpi(
+                    kpiResp
+                ).build();
+
     }
 }
