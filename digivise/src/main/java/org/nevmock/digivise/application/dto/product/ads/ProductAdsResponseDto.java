@@ -1,8 +1,10 @@
 package org.nevmock.digivise.application.dto.product.ads;
 
 import lombok.*;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RequiredArgsConstructor
 @AllArgsConstructor
@@ -27,4 +29,15 @@ public class ProductAdsResponseDto {
     private String insight;
 
     private String state;
+    private Double impression;
+
+    private String convertion;
+
+    private List<ProductKeywordResponseDto> keywords;
+
+    private String biddingStrategy;
+
+    private String shopId;
+
+    private boolean hasKeywords;
 }

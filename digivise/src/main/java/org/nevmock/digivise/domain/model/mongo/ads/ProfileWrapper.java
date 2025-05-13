@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 @Getter
 @Setter
-public class DataWrapper {
-
+public class ProfileWrapper {
+    @Field("profile_info")
+    private ProfileInfo profileInfo;
 }

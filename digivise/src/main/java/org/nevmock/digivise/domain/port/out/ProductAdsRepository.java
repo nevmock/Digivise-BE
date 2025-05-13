@@ -4,6 +4,7 @@ import org.nevmock.digivise.domain.model.mongo.ads.ProductAds;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,5 +30,24 @@ public interface ProductAdsRepository extends MongoRepository<ProductAds, String
             LocalDateTime from,
             LocalDateTime to,
             Pageable pageable
+    );
+
+    @Query("""
+      { 
+        'shop_id':                           ?0,
+        'createdAt': { $gte: ?2, $lte: ?3 },
+        'data.profile_info.data.entry_list': {
+          $elemMatch: {
+            'manual_product_ads.bidding_strategy': ?1
+          }
+        }
+      }
+    """)
+    Page<ProductAds> findByShopAndDateAndBiddingStrategy(
+            String shopId,
+            String biddingStrategy,
+            LocalDateTime createdAfter,
+            LocalDateTime createdBefore,
+            Pageable page
     );
 }

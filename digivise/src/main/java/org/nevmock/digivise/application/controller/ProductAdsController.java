@@ -35,11 +35,35 @@ public class ProductAdsController {
             @RequestParam(defaultValue = "0")
             int page,
             @RequestParam(defaultValue = "10")
-            int limit
+            int limit,
+            @RequestParam(required = false)
+            String biddingStrategy
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productAdsService.findByRange(shopId, from, to, pageRequest));
+        return ResponseEntity.ok(productAdsService.findByRangeAgg(shopId, biddingStrategy, from, to, pageRequest));
+    }
+
+    @GetMapping("/daily")
+    public ResponseEntity<Page<ProductAdsResponseDto>> getProductAdsByShopIdAndFromAndToTotal(
+            @RequestParam
+            String shopId,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to,
+            @RequestParam(defaultValue = "0")
+            int page,
+            @RequestParam(defaultValue = "10")
+            int limit,
+            @RequestParam(required = false)
+            String biddingStrategy
+    ) {
+        PageRequest pageRequest = PageRequest.of(page, limit);
+
+        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest));
     }
 
     @GetMapping("/all")

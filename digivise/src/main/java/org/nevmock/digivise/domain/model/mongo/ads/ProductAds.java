@@ -30,5 +30,5 @@ public class ProductAds {
     @Field("to")
     private String to;
     @Field("data")
-    private DataWrapper data;
+    private ProfileWrapper data;
 }

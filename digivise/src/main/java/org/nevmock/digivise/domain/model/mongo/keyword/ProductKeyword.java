@@ -8,6 +8,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Document(collection = "ProductKey")
 @Getter
 @Setter
@@ -34,10 +37,10 @@ public class ProductKeyword {
     private String shopId;
 
     @Field("data")
-    private DataWrapper data;
+    private List<DataWrapper> data;
 
     @Field("createdAt")
-    private String createdAt;
+    private LocalDateTime createdAt;
 
     @Field("from")
     private String from;
@@ -47,4 +50,7 @@ public class ProductKeyword {
 
     @Field("updatedAt")
     private String updatedAt;
+
+    @Field("campaign_id")
+    private Long campaignId;
 }

@@ -29,5 +29,5 @@ public class ProductKeywordResponseDto {
     private Double ctr;
     private String insight;
 
-    private String impression;
+    private Double impression;
 }

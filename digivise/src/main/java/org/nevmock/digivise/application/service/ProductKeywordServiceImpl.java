@@ -17,31 +17,28 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     public List<ProductKeywordResponseDto> findAll() {
 //        return productKeywordRepository.findAll().stream()
 //                .flatMap( productKeyword -> {
-//                            String id = productKeyword.getId();
+//                    ProductKeywordResponseDto productKeywordResponseDto = new ProductKeywordResponseDto();
 //
 //                            if (productKeyword.getData() != null) {
-//                                ProductKeywordResponseDto productKeywordResponseDto = new ProductKeywordResponseDto();
 //
-//                                productKeywordResponseDto.setId(id);
-//                                productKeywordResponseDto.setKey(productKeyword.getData().getKey());
-//                                productKeywordResponseDto.setShopeeMerchantId(productKeyword.getShopeeMerchantId());
 //                            }
 //                        }
-//
 //                )
-//                .map(productKeyword -> {
-//                    ProductKeywordResponseDto dto = new ProductKeywordResponseDto();
-//                    dto.setId(productKeyword.getId());
-//                    dto.setKey(productKeyword.getData().getKey());
-//                    dto.setShopeeMerchantId(productKeyword.getShopeeMerchantId());
-//                    return dto;
-//                })
+//                .collect(Collectors.toList());
         return null;
     }
 
     @Override
     public List<ProductKeywordResponseDto> findByCampaignId(Long campaignId) {
-        // Implementation here
+//        for (ProductKeyword productKeyword : productKeywordRepository.findByCampaignId(campaignId)) {
+//            ProductKeywordResponseDto productKeywordResponseDto = new ProductKeywordResponseDto();
+//            if (productKeyword.getData() != null) {
+//                productKeywordResponseDto.setCampaignId(productKeyword.getCampaignId());
+//                productKeywordResponseDto;
+//            }
+//            return List.of(productKeywordResponseDto);
+        //}
+
         return null;
     }
 

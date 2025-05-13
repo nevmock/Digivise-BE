@@ -23,5 +23,15 @@ public interface ProductAdsService {
 
     List<ProductAdsResponseDto> findByFromAndTo(String from, String to);
 
-    Page<ProductAdsResponseDto> findByRange(String shopId, LocalDateTime from, LocalDateTime to, Pageable pageable);
+    Page<ProductAdsResponseDto> findByRange(String shopId, String biddingStrategy, LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    Page<ProductAdsResponseDto> findByRangeAgg(String shopId, String biddingStrategy, LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    Page<ProductAdsResponseDto> findByRangeAggTotal(
+            String shopId,
+            String biddingStrategy,
+            LocalDateTime from,
+            LocalDateTime to,
+            Pageable pageable
+    );
 }

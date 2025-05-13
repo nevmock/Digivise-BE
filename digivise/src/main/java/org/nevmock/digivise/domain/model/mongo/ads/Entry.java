@@ -17,4 +17,8 @@ public class Entry {
     private String image;
     @Field("state")
     private String state;
+    @Field("manual_product_ads")
+    private ManualProductAds manualProductAds;
+    @Field("type")
+    private String type;
 }
