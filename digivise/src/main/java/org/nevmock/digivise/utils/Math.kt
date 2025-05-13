@@ -11,7 +11,8 @@ enum class ActionType {
     WAIT_FOR_MORE_CLICKS,        // Tunggu sampai klik lebih banyak
     DECREASE_ACOS_WITH_LIMIT,    // Turunkan ACOS tapi jaga di atas minimal bid
     DECREASE_SLIGHT,             // Turunkan bid sedikit
-    QUEUE_EVALUATION             // Masuk antrian evaluasi
+    QUEUE_EVALUATION,             // Masuk antrian evaluasi
+    IS_ROAS,
 }
 
 data class Recommendation(
@@ -54,13 +55,19 @@ fun renderInsight(rec: Recommendation): String = when (rec.action) {
 
     ActionType.QUEUE_EVALUATION ->
         "Biarkan, tapi masuk antrian evaluasi (bisa tunggu sampai klik cukup untuk keputusan)"
+
+    ActionType.IS_ROAS ->
+        // Roas bentuknya adalah rupiah, jadi persen dari current budget dan rupiahnya
+        "Targetkan budget menjadi ${"%.1f".format(rec.adjustment!! * 100)}% dari total revenue yang dihasilkan dari ROAS KPI (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%)"
 }
 
 fun formulateRecommendation(
     cpc: Double,
     acos: Double,
     klik: Double,
-    kpi: KPI
+    kpi: KPI,
+    roas: Double? = null,
+    budget: Double? = null,
 ): Recommendation {
     val overCpc = cpc > kpi.maxCpc
     val goodCpc = cpc <= kpi.maxCpc
@@ -74,6 +81,13 @@ fun formulateRecommendation(
 
     fun adjCpc() = getAdjustment(cpc - kpi.maxCpc, kpi.cpcScaleFactor)
     fun adjAcos() = getAdjustment(acos - kpi.maxAcos, kpi.acosScaleFactor)
+
+    if (budget != null && roas != null && kpi.roasKpi != null) {
+        return Recommendation(
+            ActionType.IS_ROAS,
+            calculateRoas(kpi.roasKpi, roas, budget)
+        )
+    }
 
     return when {
         // CPC tinggi & ACOS sangat tinggi & klik banyak

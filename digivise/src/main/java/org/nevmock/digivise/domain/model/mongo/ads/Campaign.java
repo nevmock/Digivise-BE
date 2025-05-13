@@ -13,6 +13,9 @@ public class Campaign {
     @Field("daily_budget")
     private Double dailyBudget;
 
+    @Field("start_time")
+    private Integer startTime;
+
     @Field("end_time")
     private Integer endTime;
 

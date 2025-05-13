@@ -1,6 +1,7 @@
 package org.nevmock.digivise.domain.port.in;
 
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
+import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -27,7 +28,7 @@ public interface ProductAdsService {
 
     Page<ProductAdsResponseDto> findByRangeAgg(String shopId, String biddingStrategy, LocalDateTime from, LocalDateTime to, Pageable pageable);
 
-    Page<ProductAdsResponseDto> findByRangeAggTotal(
+    Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
             String shopId,
             String biddingStrategy,
             LocalDateTime from,

@@ -24,6 +24,8 @@ public class ProductAdsResponseDto {
     private String image;
     private Double dailyBudget;
 
+    private Double roas;
+
     private Double click;
     private Double ctr;
     private String insight;
@@ -40,4 +42,6 @@ public class ProductAdsResponseDto {
     private String shopId;
 
     private boolean hasKeywords;
+
+    private String insightBudget;
 }

@@ -57,4 +57,7 @@ public class KPI {
 
     @Column(name = "multiplier")
     public Double multiplier;
+
+    @Column(name = "roas_kpi")
+    public Double roasKpi;
 }

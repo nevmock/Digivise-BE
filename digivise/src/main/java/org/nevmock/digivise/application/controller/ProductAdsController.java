@@ -2,6 +2,7 @@ package org.nevmock.digivise.application.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
+import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,7 +46,7 @@ public class ProductAdsController {
     }
 
     @GetMapping("/daily")
-    public ResponseEntity<Page<ProductAdsResponseDto>> getProductAdsByShopIdAndFromAndToTotal(
+    public ResponseEntity<Page<ProductAdsResponseWrapperDto>> getProductAdsByShopIdAndFromAndToTotal(
             @RequestParam
             String shopId,
             @RequestParam
@@ -64,6 +65,28 @@ public class ProductAdsController {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
         return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest));
+    }
+
+    @GetMapping("/old")
+    public ResponseEntity<Page<ProductAdsResponseDto>> getProductAdsByShopIdAndFromAndToOld(
+            @RequestParam
+            String shopId,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to,
+            @RequestParam(defaultValue = "0")
+            int page,
+            @RequestParam(defaultValue = "10")
+            int limit,
+            @RequestParam(required = false)
+            String biddingStrategy
+    ) {
+        PageRequest pageRequest = PageRequest.of(page, limit);
+
+        return ResponseEntity.ok(productAdsService.findByRange(shopId, biddingStrategy, from, to, pageRequest));
     }
 
     @GetMapping("/all")
