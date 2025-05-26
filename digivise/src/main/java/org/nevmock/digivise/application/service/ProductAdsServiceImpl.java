@@ -52,39 +52,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
     ProductKeywordRepository productKeywordRepository;
 
     public List<ProductAdsResponseDto> findAll() {
-        return productAdsRepository.findAll().stream()
-                .flatMap(ad -> {
-                    String id = ad.getId();
-                    String shopeeMerchantId = ad.getShopId();
-                    String toLoc = ad.getTo();
-                    String fromLoc = ad.getFrom();
-                    LocalDateTime createdAt = ad.getCreatedAt();
-                    if (ad.getData() != null && ad.getData().getProfileInfo().getData() != null) {
-                        return ad.getData().getProfileInfo().getData().getEntry_list().stream()
-                                .map(e -> {
-                                    ProductAdsResponseDto dto = new ProductAdsResponseDto();
-                                    dto.setId(id);
-                                    dto.setShopeeMerchantId(shopeeMerchantId);
-                                    dto.setFrom(fromLoc);
-                                    dto.setTo(toLoc);
-                                    dto.setCreatedAt(createdAt);
-                                    dto.setCampaignId(e.getCampaign().getCampaignId());
-                                    dto.setAcos(e.getReport().getBroad_gmv());
-                                    dto.setCpc(e.getReport().getCpc());
-                                    dto.setState(e.getState());
-                                    dto.setImpression(e.getReport().getImpression());
-                                    return dto;
-                                });
-                    }
-                    ProductAdsResponseDto baseDto = new ProductAdsResponseDto();
-                    baseDto.setId(id);
-                    baseDto.setShopeeMerchantId(shopeeMerchantId);
-                    baseDto.setFrom(fromLoc);
-                    baseDto.setTo(toLoc);
-                    baseDto.setCreatedAt(createdAt);
-                    return List.of(baseDto).stream();
-                })
-                .collect(Collectors.toList());
+        return List.of();
     }
 
     @Override
@@ -139,29 +107,29 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 Criteria.where("shop_id").is(shopId)
                         .and("createdAt").gte(from).lte(to)
         ));
-        baseOps.add(Aggregation.unwind("data.profile_info.data.entry_list"));
+        baseOps.add(Aggregation.unwind("data.entry_list"));
         if (biddingStrategy != null) {
             baseOps.add(Aggregation.match(
-                    Criteria.where("data.profile_info.data.entry_list.manual_product_ads.bidding_strategy")
+                    Criteria.where("data.entry_list.manual_product_ads.bidding_strategy")
                             .is(biddingStrategy)
             ));
         }
-        baseOps.add(Aggregation.group("data.profile_info.data.entry_list.campaign.campaign_id")
+        baseOps.add(Aggregation.group("data.entry_list.campaign.campaign_id")
                 .first("_id").as("id")
                 .first("shop_id").as("shopId")
                 .first(Aggregation.bind("from", "from").toString()).as("from")
                 .first(Aggregation.bind("to",   "to").toString()).as("to")
                 .last("createdAt").as("createdAt")
-                .first("data.profile_info.data.entry_list.title").as("title")
-                .first("data.profile_info.data.entry_list.image").as("image")
-                .first("data.profile_info.data.entry_list.state").as("state")
-                .sum("data.profile_info.data.entry_list.campaign.daily_budget").as("dailyBudget")
-                .first("data.profile_info.data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
-                .avg("data.profile_info.data.entry_list.report.cpc").as("cpc")
-                .avg("data.profile_info.data.entry_list.report.broad_gmv").as("acos")
-                .avg("data.profile_info.data.entry_list.report.click").as("click")
-                .avg("data.profile_info.data.entry_list.report.ctr").as("ctr")
-                .sum("data.profile_info.data.entry_list.report.impression").as("impression")
+                .first("data.entry_list.title").as("title")
+                .first("data.entry_list.image").as("image")
+                .first("data.entry_list.state").as("state")
+                .sum("data.entry_list.campaign.daily_budget").as("dailyBudget")
+                .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
+                .avg("data.entry_list.report.cpc").as("cpc")
+                .avg("data.entry_list.report.broad_gmv").as("acos")
+                .avg("data.entry_list.report.click").as("click")
+                .avg("data.entry_list.report.ctr").as("ctr")
+                .sum("data.entry_list.report.impression").as("impression")
         );
         baseOps.add(Aggregation.project()
                 .andExpression("_id").as("campaignId")
@@ -416,158 +384,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             LocalDateTime to,
             Pageable pageable
     ) {
-
-        List<ProductAds> allAds;
-
-        if (biddingStrategy != null) {
-            allAds = productAdsRepository
-                    .findByShopAndDateAndBiddingStrategy(shopId, biddingStrategy, from, to, Pageable.unpaged())
-                    .getContent();
-        } else {
-            allAds = productAdsRepository
-                    .findByShopIdAndCreatedAtBetween(shopId, from, to, Pageable.unpaged())
-                    .getContent();
-        }
-
-        Merchant merchant = merchantRepository
-                .findByShopeeMerchantId(shopId)
-                .orElseThrow(() -> new RuntimeException("Merchant not found with ID: " + shopId));
-
-        KPI kpi = kpiRepository
-                .findByMerchantId(merchant.getId())
-                .orElseThrow(() -> new RuntimeException("KPI not found for Merchant ID: " + merchant.getId()));
-
-        List<ProductKeyword> productKeywords = productKeywordRepository
-                .findByShopIdAndCreatedAtBetween(shopId, from, to);
-
-        List<ProductKeywordResponseDto> allKeywordDtos = productKeywords.stream()
-                .flatMap(pk -> {
-                    Long campId = pk.getCampaignId();
-                    return pk.getData().stream()
-                            .map(dw -> {
-                                ProductKeywordResponseDto kdto = new ProductKeywordResponseDto();
-                                kdto.setCampaignId(campId);
-                                kdto.setKey(dw.getKey());
-                                kdto.setAcos(dw.getMetrics().getBroadGmv());
-                                kdto.setCpc(dw.getMetrics().getCpc());
-                                kdto.setId(pk.getId());
-                                kdto.setShopeeMerchantId(pk.getShopId());
-                                kdto.setFrom(pk.getFrom());
-                                kdto.setTo(pk.getTo());
-                                kdto.setCreatedAt(pk.getCreatedAt());
-                                kdto.setCost(dw.getMetrics().getCost());
-                                kdto.setClick(dw.getMetrics().getClick());
-                                kdto.setImpression(dw.getMetrics().getImpression());
-                                return kdto;
-                            });
-                })
-                .toList();
-
-        Map<Long, List<ProductKeywordResponseDto>> keywordsByCampaign = allKeywordDtos.stream()
-                .collect(Collectors.groupingBy(ProductKeywordResponseDto::getCampaignId));
-
-        List<ProductAdsResponseDto> allDtos = allAds.stream()
-                .flatMap(ad -> {
-                    String id = ad.getId();
-                    String shopeeMerchantId = ad.getShopId();
-                    String toLoc = ad.getTo();
-                    String fromLoc = ad.getFrom();
-                    LocalDateTime createdAt = ad.getCreatedAt();
-
-                    if (ad.getData() != null && ad.getData().getProfileInfo().getData() != null) {
-
-                        return ad.getData().getProfileInfo().getData().getEntry_list().stream()
-                                .filter(e -> {
-                                    if (biddingStrategy != null) {
-                                        return e.getManualProductAds() != null &&
-                                                biddingStrategy.equals(e.getManualProductAds().getBiddingStrategy());
-                                    }
-                                    return true;
-                                })
-                                .map(e -> {
-                                    ProductAdsResponseDto dto = new ProductAdsResponseDto();
-                                    dto.setId(id);
-                                    dto.setShopeeMerchantId(shopeeMerchantId);
-                                    dto.setFrom(fromLoc);
-                                    dto.setTo(toLoc);
-                                    dto.setCreatedAt(createdAt);
-                                    dto.setCampaignId(e.getCampaign().getCampaignId());
-                                    dto.setAcos(e.getReport().getBroad_gmv());
-                                    dto.setCpc(e.getReport().getCpc());
-                                    dto.setDailyBudget(e.getCampaign().getDailyBudget());
-                                    dto.setImage(e.getImage());
-                                    dto.setTitle(e.getTitle());
-                                    dto.setClick(e.getReport().getClick());
-                                    dto.setCtr(e.getReport().getCtr());
-                                    dto.setState(e.getState());
-                                    dto.setImpression(e.getReport().getImpression());
-                                    if (e.getManualProductAds() != null) {
-                                        dto.setBiddingStrategy(e.getManualProductAds().getBiddingStrategy());
-                                    }
-                                    return dto;
-                                });
-                    }
-
-                    ProductAdsResponseDto baseDto = new ProductAdsResponseDto();
-                    baseDto.setId(id);
-                    baseDto.setShopeeMerchantId(shopeeMerchantId);
-                    baseDto.setFrom(fromLoc);
-                    baseDto.setTo(toLoc);
-                    baseDto.setCreatedAt(createdAt);
-                    return Stream.of(baseDto);
-                })
-                .collect(Collectors.toList());
-
-        Map<Long, List<ProductAdsResponseDto>> campaignGroups = allDtos.stream()
-                .filter(dto -> dto.getCampaignId() != null)
-                .collect(Collectors.groupingBy(ProductAdsResponseDto::getCampaignId));
-
-        List<ProductAdsResponseDto> uniqueCampaignDtos = campaignGroups.entrySet().stream()
-                .map(entry -> {
-                    Long campaignId = entry.getKey();
-                    List<ProductAdsResponseDto> dtoList = entry.getValue();
-                    ProductAdsResponseDto combinedDto = dtoList.get(0);
-
-                    double avgCpc = dtoList.stream().mapToDouble(ProductAdsResponseDto::getCpc).filter(d -> !Double.isNaN(d)).average().orElse(0);
-                    double avgAcos = dtoList.stream().mapToDouble(ProductAdsResponseDto::getAcos).filter(d -> !Double.isNaN(d)).average().orElse(0);
-                    double avgClick = dtoList.stream().mapToDouble(ProductAdsResponseDto::getClick).filter(d -> !Double.isNaN(d)).average().orElse(0);
-                    double avgCtr = dtoList.stream().mapToDouble(ProductAdsResponseDto::getCtr).filter(d -> !Double.isNaN(d)).average().orElse(0);
-                    double totalImpression = dtoList.stream().mapToDouble(ProductAdsResponseDto::getImpression).filter(d -> !Double.isNaN(d)).sum();
-
-                    combinedDto.setCpc(avgCpc);
-                    combinedDto.setAcos(avgAcos);
-                    combinedDto.setClick(avgClick);
-                    combinedDto.setCtr(avgCtr);
-                    combinedDto.setImpression(totalImpression);
-                    combinedDto.setCreatedAt(dtoList.stream().map(ProductAdsResponseDto::getCreatedAt).max(LocalDateTime::compareTo).orElse(combinedDto.getCreatedAt()));
-
-                    return combinedDto;
-                })
-                .collect(Collectors.toList());
-
-        double overallAvgCpc = uniqueCampaignDtos.stream().mapToDouble(ProductAdsResponseDto::getCpc).average().orElse(0);
-        if (overallAvgCpc > kpi.getMaxCpc()) {
-            uniqueCampaignDtos.forEach(dto -> {
-                Recommendation rec = MathKt.formulateRecommendation(dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, null, null);
-                dto.setInsight(MathKt.renderInsight(rec));
-            });
-        }
-
-        uniqueCampaignDtos.forEach(adDto -> {
-            List<ProductKeywordResponseDto> kws = keywordsByCampaign.getOrDefault(adDto.getCampaignId(), Collections.emptyList());
-            adDto.setKeywords(kws);
-
-            if (!kws.isEmpty()) {
-                adDto.setHasKeywords(true);
-            }
-        });
-
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), uniqueCampaignDtos.size());
-        List<ProductAdsResponseDto> pageContent = start < uniqueCampaignDtos.size() ?
-                uniqueCampaignDtos.subList(start, end) : Collections.emptyList();
-
-        return new PageImpl<>(pageContent, pageable, uniqueCampaignDtos.size());
+        return Page.empty();
     }
 
 //    @Override
@@ -591,10 +408,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 //                Criteria.where("shop_id").is(shopId)
 //                        .and("createdAt").gte(from).lte(to)
 //        ));
-//        baseOps.add(Aggregation.unwind("data.profile_info.data.entry_list"));
+//        baseOps.add(Aggregation.unwind("data.entry_list"));
 //        if (biddingStrategy != null) {
 //            baseOps.add(Aggregation.match(
-//                    Criteria.where("data.profile_info.data.entry_list.manual_product_ads.bidding_strategy")
+//                    Criteria.where("data.entry_list.manual_product_ads.bidding_strategy")
 //                            .is(biddingStrategy)
 //            ));
 //        }
@@ -602,18 +419,18 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 //                .and("_id").as("id")
 //                .and("shop_id").as("shopId")
 //                .and("createdAt").as("createdAt")
-//                .and("data.profile_info.data.entry_list.campaign.campaign_id").as("campaignId")
-//                .and("data.profile_info.data.entry_list.title").as("title")
-//                .and("data.profile_info.data.entry_list.image").as("image")
-//                .and("data.profile_info.data.entry_list.state").as("state")
-//                .and("data.profile_info.data.entry_list.campaign.daily_budget").as("dailyBudget")
-//                .and("data.profile_info.data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
-//                .and("data.profile_info.data.entry_list.report.cpc").as("cpc")
-//                .and("data.profile_info.data.entry_list.report.broad_gmv").as("acos")
-//                .and("data.profile_info.data.entry_list.report.click").as("click")
-//                .and("data.profile_info.data.entry_list.report.ctr").as("ctr")
-//                .and("data.profile_info.data.entry_list.report.impression").as("impression")
-//                .and("data.profile_info.data.entry_list.report.broad_roi").as("roas")
+//                .and("data.entry_list.campaign.campaign_id").as("campaignId")
+//                .and("data.entry_list.title").as("title")
+//                .and("data.entry_list.image").as("image")
+//                .and("data.entry_list.state").as("state")
+//                .and("data.entry_list.campaign.daily_budget").as("dailyBudget")
+//                .and("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
+//                .and("data.entry_list.report.cpc").as("cpc")
+//                .and("data.entry_list.report.broad_gmv").as("acos")
+//                .and("data.entry_list.report.click").as("click")
+//                .and("data.entry_list.report.ctr").as("ctr")
+//                .and("data.entry_list.report.impression").as("impression")
+//                .and("data.entry_list.report.broad_roi").as("roas")
 //                .andExpression("{$literal: '" + from.toString() + "'}") .as("from")
 //                .andExpression("{$literal: '" + to.toString() + "'}") .as("to")
 //        );
@@ -847,17 +664,16 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .findByMerchantId(merchant.getId())
                 .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
 
-        // Build aggregation pipeline
         List<AggregationOperation> baseOps = new ArrayList<>();
         baseOps.add(Aggregation.match(
                 Criteria.where("shop_id").is(shopId)
                         .and("createdAt").gte(from).lte(to)
         ));
 
-        baseOps.add(Aggregation.unwind("data.profile_info.data.entry_list"));
+        baseOps.add(Aggregation.unwind("data.entry_list"));
         if (biddingStrategy != null) {
             baseOps.add(Aggregation.match(
-                    Criteria.where("data.profile_info.data.entry_list.manual_product_ads.bidding_strategy")
+                    Criteria.where("data.entry_list.manual_product_ads.bidding_strategy")
                             .is(biddingStrategy)
             ));
         }
@@ -865,18 +681,20 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("_id").as("id")
                 .and("shop_id").as("shopId")
                 .and("createdAt").as("createdAt")
-                .and("data.profile_info.data.entry_list.campaign.campaign_id").as("campaignId")
-                .and("data.profile_info.data.entry_list.title").as("title")
-                .and("data.profile_info.data.entry_list.image").as("image")
-                .and("data.profile_info.data.entry_list.state").as("state")
-                .and("data.profile_info.data.entry_list.campaign.daily_budget").as("dailyBudget")
-                .and("data.profile_info.data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
-                .and("data.profile_info.data.entry_list.report.cpc").as("cpc")
-                .and("data.profile_info.data.entry_list.report.broad_gmv").as("acos")
-                .and("data.profile_info.data.entry_list.report.click").as("click")
-                .and("data.profile_info.data.entry_list.report.ctr").as("ctr")
-                .and("data.profile_info.data.entry_list.report.impression").as("impression")
-                .and("data.profile_info.data.entry_list.report.broad_roi").as("roas")
+                .and("data.entry_list.campaign.campaign_id").as("campaignId")
+                .and("data.entry_list.title").as("title")
+                .and("data.entry_list.image").as("image")
+                .and("data.entry_list.state").as("state")
+                .and("data.entry_list.campaign.daily_budget").as("dailyBudget")
+                .and("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
+                .and("data.entry_list.report.cpc").as("cpc")
+                .and("data.entry_list.report.broad_gmv").as("acos")
+                .and("data.entry_list.report.click").as("click")
+                .and("data.entry_list.report.ctr").as("ctr")
+                .and("data.entry_list.report.impression").as("impression")
+                .and("data.entry_list.report.broad_roi").as("roas")
+                .and("data.from").as("shopeeFrom")
+                .and("data.to").as("shopeeTo")
                 .andExpression("{$literal: '" + from.toString() + "'}").as("from")
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
@@ -912,7 +730,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         // Map to DTOs
         List<ProductAdsResponseDto> dtos = docs.stream()
                 .map(doc -> mapToProductAdsDto(doc, kpi))
-                .collect(Collectors.toList());
+                .toList();
 
         // Group by campaignId
         Map<Long, List<ProductAdsResponseDto>> grouped = dtos.stream()
@@ -959,6 +777,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setCtr(getDouble(doc, "ctr"));
         dto.setImpression(getDouble(doc, "impression"));
         dto.setRoas(getDouble(doc, "roas"));
+        dto.setShopeeFrom(getString(doc, "shopeeFrom"));
+        dto.setShopeeTo(getString(doc, "shopeeTo"));
         dto.setInsightBudget(
                 MathKt.renderInsight(
                         MathKt.formulateRecommendation(
@@ -967,7 +787,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 )
         );
 
-        // Map keywords
         @SuppressWarnings("unchecked")
         List<Document> kwDocs = (List<Document>) doc.get("keywords");
         List<ProductKeywordResponseDto> kws = kwDocs.stream()
@@ -1012,6 +831,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         pk.setImpression(getDouble(metrics, "impression"));
         pk.setClick(getDouble(metrics, "click"));
         pk.setCtr(getDouble(metrics, "ctr"));
+        pk.setShopeeFrom(getString(kd, "shopeeFrom"));
+        pk.setShopeeTo(getString(kd, "shopeeTo"));
         pk.setInsight(
                 MathKt.renderInsight(
                         MathKt.formulateRecommendation(

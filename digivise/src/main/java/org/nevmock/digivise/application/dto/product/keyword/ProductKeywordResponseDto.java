@@ -21,6 +21,8 @@ public class ProductKeywordResponseDto {
     private Double cpc;
     private String from;
     private String to;
+    private String shopeeFrom;
+    private String shopeeTo;
     private LocalDateTime createdAt;
 
     private Double cost;

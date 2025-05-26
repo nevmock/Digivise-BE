@@ -7,5 +7,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Getter
 @Setter
 public class DataWrapper {
-
+    @Field("entry_list")
+    private EntryList entryList;
+    @Field("total")
+    private Integer total;
 }

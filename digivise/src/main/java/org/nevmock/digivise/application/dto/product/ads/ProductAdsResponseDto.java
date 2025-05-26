@@ -18,6 +18,8 @@ public class ProductAdsResponseDto {
     private Double cpc;
     private String from;
     private String to;
+    private String shopeeFrom;
+    private String shopeeTo;
     private LocalDateTime createdAt;
     private String id;
     private String title;

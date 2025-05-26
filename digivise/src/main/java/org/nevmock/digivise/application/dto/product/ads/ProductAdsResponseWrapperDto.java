@@ -16,5 +16,7 @@ public class ProductAdsResponseWrapperDto {
     private Long campaignId;
     private LocalDateTime from;
     private LocalDateTime to;
+    private String shopeeFrom;
+    private String shopeeTo;
     private List<ProductAdsResponseDto> data;
 }

@@ -36,7 +36,7 @@ public interface ProductAdsRepository extends MongoRepository<ProductAds, String
       { 
         'shop_id':                           ?0,
         'createdAt': { $gte: ?2, $lte: ?3 },
-        'data.profile_info.data.entry_list': {
+        'data.entry_list': {
           $elemMatch: {
             'manual_product_ads.bidding_strategy': ?1
           }
