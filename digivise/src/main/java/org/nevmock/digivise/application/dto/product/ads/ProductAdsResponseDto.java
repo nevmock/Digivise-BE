@@ -36,6 +36,18 @@ public class ProductAdsResponseDto {
     private Double impression;
 
     private String convertion;
+    private Double broadGmv;
+
+    private Double broadOrder;
+    private Double checkout;
+
+    private Double directOrder;
+    private Double directOrderAmount;
+    private Double directGmv;
+    private Double directRoi;
+    private Double directCir;
+    private Double directCr;
+    private Double cpdc;
 
     private List<ProductKeywordResponseDto> keywords;
 
@@ -53,4 +65,15 @@ public class ProductAdsResponseDto {
     private Double impressionRatio;
     private Double costRatio;
     private Double ctrRatio;
+
+    private Double broadGmvRatio;
+    private Double broadOrderRatio;
+    private Double checkoutRatio;
+    private Double directOrderRatio;
+    private Double directOrderAmountRatio;
+    private Double directGmvRatio;
+    private Double directRoiRatio;
+    private Double directCirRatio;
+    private Double directCrRatio;
+    private Double cpdcRatio;
 }

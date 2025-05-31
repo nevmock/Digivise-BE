@@ -695,14 +695,31 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.report.ctr").as("ctr")
                 .and("data.entry_list.report.impression").as("impression")
                 .and("data.entry_list.report.broad_roi").as("roas")
-                .and("data.from").as("shopeeFrom")
-                .and("data.to").as("shopeeTo")
+                .and("data.entry_list.report.direct_order").as("directOrder")
+                .and("data.entry_list.report.direct_order_amount").as("directOrderAmount")
+                .and("data.entry_list.report.direct_gmv").as("directGmv")
+                .and("data.entry_list.report.direct_roi").as("directRoi")
+                .and("data.entry_list.report.direct_cir").as("directCir")
+                .and("data.entry_list.report.direct_cr").as("directCr")
+                .and("data.entry_list.report.cpdc").as("cpdc")
                 .and("data.entry_list.ratio.broad_cir").as("acosRatio")
                 .and("data.entry_list.ratio.cpc").as("cpcRatio")
                 .and("data.entry_list.ratio.click").as("clickRatio")
                 .and("data.entry_list.ratio.ctr").as("ctrRatio")
                 .and("data.entry_list.ratio.impression").as("impressionRatio")
                 .and("data.entry_list.ratio.cost").as("costRatio")
+                .and("data.entry_list.ratio.broad_gmv").as("broadGmvRatio")
+                .and("data.entry_list.ratio.broad_order").as("broadOrderRatio")
+                .and("data.entry_list.ratio.checkout").as("checkoutRatio")
+                .and("data.entry_list.ratio.direct_order").as("directOrderRatio")
+                .and("data.entry_list.ratio.direct_order_amount").as("directOrderAmountRatio")
+                .and("data.entry_list.ratio.direct_gmv").as("directGmvRatio")
+                .and("data.entry_list.ratio.direct_roi").as("directRoiRatio")
+                .and("data.entry_list.ratio.direct_cir").as("directCirRatio")
+                .and("data.entry_list.ratio.direct_cr").as("directCrRatio")
+                .and("data.entry_list.ratio.cpdc").as("cpdcRatio")
+                .and("data.from").as("shopeeFrom")
+                .and("data.to").as("shopeeTo")
                 .andExpression("{$literal: '" + from.toString() + "'}").as("from")
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
@@ -739,6 +756,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         List<ProductAdsResponseDto> dtos = docs.stream()
                 .map(doc -> mapToProductAdsDto(doc, kpi))
                 .toList();
+
+        for (ProductAdsResponseDto dto : dtos) {
+            System.out.println("Ratios: " + dto.getAcosRatio());
+        }
 
         // Group by campaignId
         Map<Long, List<ProductAdsResponseDto>> grouped = dtos.stream()
@@ -793,6 +814,23 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setCtrRatio(getDouble(doc, "ctrRatio"));
         dto.setImpressionRatio(getDouble(doc, "impressionRatio"));
         dto.setCostRatio(getDouble(doc, "costRatio"));
+        dto.setDirectOrder(getDouble(doc, "directOrder"));
+        dto.setDirectOrderAmount(getDouble(doc, "directOrderAmount"));
+        dto.setDirectGmv(getDouble(doc, "directGmv"));
+        dto.setDirectRoi(getDouble(doc, "directRoi"));
+        dto.setDirectCir(getDouble(doc, "directCir"));
+        dto.setDirectCr(getDouble(doc, "directCr"));
+        dto.setCpdc(getDouble(doc, "cpdc"));
+        dto.setBroadGmvRatio(getDouble(doc, "broadGmvRatio"));
+        dto.setBroadOrderRatio(getDouble(doc, "broadOrderRatio"));
+        dto.setCheckoutRatio(getDouble(doc, "checkoutRatio"));
+        dto.setDirectOrderRatio(getDouble(doc, "directOrderRatio"));
+        dto.setDirectOrderAmountRatio(getDouble(doc, "directOrderAmountRatio"));
+        dto.setDirectGmvRatio(getDouble(doc, "directGmvRatio"));
+        dto.setDirectRoiRatio(getDouble(doc, "directRoiRatio"));
+        dto.setDirectCirRatio(getDouble(doc, "directCirRatio"));
+        dto.setDirectCrRatio(getDouble(doc, "directCrRatio"));
+        dto.setCpdcRatio(getDouble(doc, "cpdcRatio"));
         dto.setInsightBudget(
                 MathKt.renderInsight(
                         MathKt.formulateRecommendation(
