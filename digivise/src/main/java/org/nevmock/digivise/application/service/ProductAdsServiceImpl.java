@@ -25,6 +25,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -126,7 +128,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .sum("data.entry_list.campaign.daily_budget").as("dailyBudget")
                 .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
                 .avg("data.entry_list.report.cpc").as("cpc")
-                .avg("data.entry_list.report.broad_gmv").as("acos")
+                .avg("data.entry_list.report.broad_cir").as("acos")
                 .avg("data.entry_list.report.click").as("click")
                 .avg("data.entry_list.report.ctr").as("ctr")
                 .sum("data.entry_list.report.impression").as("impression")
@@ -359,7 +361,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("to").as("to")
                 .and("createdAt").as("createdAt")
                 .and("data.key").as("key")
-                .and("data.metrics.broadGmv").as("acos")
+                .and("data.metrics.broadCir").as("acos")
                 .and("data.metrics.cpc").as("cpc")
                 .and("data.metrics.cost").as("cost")
                 .and("data.metrics.click").as("click")
@@ -426,7 +428,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 //                .and("data.entry_list.campaign.daily_budget").as("dailyBudget")
 //                .and("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
 //                .and("data.entry_list.report.cpc").as("cpc")
-//                .and("data.entry_list.report.broad_gmv").as("acos")
+//                .and("data.entry_list.report.broad_cir").as("acos")
 //                .and("data.entry_list.report.click").as("click")
 //                .and("data.entry_list.report.ctr").as("ctr")
 //                .and("data.entry_list.report.impression").as("impression")
@@ -531,7 +533,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 //                                pk.setKey(data.getString("key"));
 //                                Document metrics = data.get("metrics", Document.class);
 //                                if (metrics != null) {
-//                                    Object rawAcos = metrics.get("broad_gmv");
+//                                    Object rawAcos = metrics.get("broad_cir");
 //                                    if (rawAcos instanceof Double) {
 //                                        pk.setAcos((Double) rawAcos);
 //                                    } else if (rawAcos instanceof Integer) {
@@ -688,13 +690,19 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.campaign.daily_budget").as("dailyBudget")
                 .and("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
                 .and("data.entry_list.report.cpc").as("cpc")
-                .and("data.entry_list.report.broad_gmv").as("acos")
+                .and("data.entry_list.report.broad_cir").as("acos")
                 .and("data.entry_list.report.click").as("click")
                 .and("data.entry_list.report.ctr").as("ctr")
                 .and("data.entry_list.report.impression").as("impression")
                 .and("data.entry_list.report.broad_roi").as("roas")
                 .and("data.from").as("shopeeFrom")
                 .and("data.to").as("shopeeTo")
+                .and("data.entry_list.ratio.broad_cir").as("acosRatio")
+                .and("data.entry_list.ratio.cpc").as("cpcRatio")
+                .and("data.entry_list.ratio.click").as("clickRatio")
+                .and("data.entry_list.ratio.ctr").as("ctrRatio")
+                .and("data.entry_list.ratio.impression").as("impressionRatio")
+                .and("data.entry_list.ratio.cost").as("costRatio")
                 .andExpression("{$literal: '" + from.toString() + "'}").as("from")
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
@@ -771,7 +779,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setState(getString(doc, "state"));
         dto.setDailyBudget(getDouble(doc, "dailyBudget") / 100000);
         dto.setBiddingStrategy(getString(doc, "biddingStrategy"));
-        dto.setCpc(getDouble(doc, "cpc"));
+        dto.setCpc(new BigDecimal(getDouble(doc, "cpc") ).setScale(5, RoundingMode.CEILING).doubleValue());
         dto.setAcos(getDouble(doc, "acos"));
         dto.setClick(getDouble(doc, "click"));
         dto.setCtr(getDouble(doc, "ctr"));
@@ -779,6 +787,12 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setRoas(getDouble(doc, "roas"));
         dto.setShopeeFrom(getString(doc, "shopeeFrom"));
         dto.setShopeeTo(getString(doc, "shopeeTo"));
+        dto.setAcosRatio(getDouble(doc, "acosRatio"));
+        dto.setCpcRatio(getDouble(doc, "cpcRatio"));
+        dto.setClickRatio(getDouble(doc, "clickRatio"));
+        dto.setCtrRatio(getDouble(doc, "ctrRatio"));
+        dto.setImpressionRatio(getDouble(doc, "impressionRatio"));
+        dto.setCostRatio(getDouble(doc, "costRatio"));
         dto.setInsightBudget(
                 MathKt.renderInsight(
                         MathKt.formulateRecommendation(
@@ -825,7 +839,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         pk.setCreatedAt(getDateTime(kd, "createdAt"));
         pk.setKey(data != null ? getString(data, "key") : getString(kd, "key"));
         Document metrics = data != null ? data.get("metrics", Document.class) : kd;
-        pk.setAcos(getDouble(metrics, "broad_gmv"));
+        pk.setAcos(getDouble(metrics, "broad_cir"));
         pk.setCpc(getDouble(metrics, "cpc"));
         pk.setCost(getDouble(metrics, "cost"));
         pk.setImpression(getDouble(metrics, "impression"));

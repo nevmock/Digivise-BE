@@ -33,7 +33,7 @@ fun renderInsight(rec: Recommendation): String = when (rec.action) {
         "Turunkan bid proporsional dari CPC (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%)"
 
     ActionType.INCREASE_BID ->
-        "Naikkan bid sebanyak ${"%.1f".format(rec.adjustment!! * 100)}% (karena keduanya di atas KPI)"
+        "Naikkan bid sebanyak ${"%.1f".format(rec.adjustment!! * 100)}%"
 
     ActionType.KEEP ->
         "Biarkan tanpa perubahan"
@@ -128,7 +128,7 @@ fun formulateRecommendation(
 
         // CPC baik & ACOS efisien & klik banyak
         goodCpc && efficientAcos && manyKlik ->
-            Recommendation(ActionType.INCREASE_BID, getAdjustmentUpward(acos - kpi.maxAcos, kpi.acosScaleFactor))
+            Recommendation(ActionType.INCREASE_BID, getAdjustment(acos - kpi.maxAcos, kpi.acosScaleFactor))
 
         else ->
             Recommendation(ActionType.KEEP)

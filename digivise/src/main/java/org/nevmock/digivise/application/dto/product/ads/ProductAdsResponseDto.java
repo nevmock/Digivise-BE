@@ -46,4 +46,11 @@ public class ProductAdsResponseDto {
     private boolean hasKeywords;
 
     private String insightBudget;
+
+    private Double acosRatio;
+    private Double cpcRatio;
+    private Double clickRatio;
+    private Double impressionRatio;
+    private Double costRatio;
+    private Double ctrRatio;
 }
