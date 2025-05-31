@@ -701,6 +701,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.report.direct_roi").as("directRoi")
                 .and("data.entry_list.report.direct_cir").as("directCir")
                 .and("data.entry_list.report.direct_cr").as("directCr")
+                .and("data.entry_list.report.cost").as("cost")
                 .and("data.entry_list.report.cpdc").as("cpdc")
                 .and("data.entry_list.ratio.broad_cir").as("acosRatio")
                 .and("data.entry_list.ratio.cpc").as("cpcRatio")
@@ -831,6 +832,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setDirectCirRatio(getDouble(doc, "directCirRatio"));
         dto.setDirectCrRatio(getDouble(doc, "directCrRatio"));
         dto.setCpdcRatio(getDouble(doc, "cpdcRatio"));
+        dto.setCost(getDouble(doc, "cost"));
         dto.setInsightBudget(
                 MathKt.renderInsight(
                         MathKt.formulateRecommendation(

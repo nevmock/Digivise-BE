@@ -59,6 +59,8 @@ public class ProductAdsResponseDto {
 
     private String insightBudget;
 
+    private Double cost;
+
     private Double acosRatio;
     private Double cpcRatio;
     private Double clickRatio;
