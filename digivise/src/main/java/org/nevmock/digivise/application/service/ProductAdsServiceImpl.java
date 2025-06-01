@@ -657,7 +657,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             String biddingStrategy,
             LocalDateTime from,
             LocalDateTime to,
-            Pageable pageable
+            Pageable pageable,
+            String type
     ) {
         Merchant merchant = merchantRepository
                 .findByShopeeMerchantId(shopId)
@@ -677,6 +678,12 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             baseOps.add(Aggregation.match(
                     Criteria.where("data.entry_list.manual_product_ads.bidding_strategy")
                             .is(biddingStrategy)
+            ));
+        }
+        if (type != null) {
+            baseOps.add(Aggregation.match(
+                    Criteria.where("data.entry_list.type")
+                            .is(type)
             ));
         }
         baseOps.add(Aggregation.project()

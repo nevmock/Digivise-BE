@@ -60,11 +60,13 @@ public class ProductAdsController {
             @RequestParam(defaultValue = "10")
             int limit,
             @RequestParam(required = false)
-            String biddingStrategy
+            String biddingStrategy,
+            @RequestParam(required = false)
+            String type
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest));
+        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type));
     }
 
     @GetMapping("/old")

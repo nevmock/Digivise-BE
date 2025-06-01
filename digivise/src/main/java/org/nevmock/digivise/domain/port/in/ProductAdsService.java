@@ -33,6 +33,7 @@ public interface ProductAdsService {
             String biddingStrategy,
             LocalDateTime from,
             LocalDateTime to,
-            Pageable pageable
+            Pageable pageable,
+            String type
     );
 }
