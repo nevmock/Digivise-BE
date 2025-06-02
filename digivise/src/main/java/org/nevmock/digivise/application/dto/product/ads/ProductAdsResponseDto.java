@@ -78,4 +78,6 @@ public class ProductAdsResponseDto {
     private Double directCirRatio;
     private Double directCrRatio;
     private Double cpdcRatio;
+
+    private String type;
 }
