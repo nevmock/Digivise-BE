@@ -36,4 +36,12 @@ public interface ProductAdsService {
             Pageable pageable,
             String type
     );
+
+    Page<ProductAdsResponseDto> findTodayData(
+            String shopId,
+            String biddingStrategy,
+            Pageable pageable
+    );
+
+    boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas);
 }

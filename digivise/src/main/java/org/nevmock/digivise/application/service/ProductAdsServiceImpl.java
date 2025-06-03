@@ -6,23 +6,21 @@ import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrappe
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
 import org.nevmock.digivise.domain.model.KPI;
 import org.nevmock.digivise.domain.model.Merchant;
-import org.nevmock.digivise.domain.model.mongo.ads.ProductAds;
-import org.nevmock.digivise.domain.model.mongo.keyword.ProductKeyword;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
 import org.nevmock.digivise.domain.port.out.KPIRepository;
 import org.nevmock.digivise.domain.port.out.MerchantRepository;
 import org.nevmock.digivise.domain.port.out.ProductAdsRepository;
 import org.nevmock.digivise.domain.port.out.ProductKeywordRepository;
-import org.nevmock.digivise.utils.Recommendation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -30,7 +28,6 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -129,23 +126,66 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .first("data.entry_list.title").as("title")
                 .first("data.entry_list.image").as("image")
                 .first("data.entry_list.state").as("state")
-                .sum("data.entry_list.campaign.daily_budget").as("dailyBudget") // Sum for budget
+                .sum("data.entry_list.campaign.daily_budget").as("dailyBudget") // Changed to avg
                 .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
-                .avg("data.entry_list.report.cpc").as("cpc") // Average for rates
-                .avg("data.entry_list.report.broad_cir").as("acos") // Average for rates
-                .avg("data.entry_list.report.click").as("click") // Average for clicks
-                .avg("data.entry_list.report.ctr").as("ctr") // Average for rates
-                .avg("data.entry_list.report.impression").as("impression") // Sum for counts
-
+                .avg("data.entry_list.report.cpc").as("cpc")
+                .avg("data.entry_list.report.broad_cir").as("acos")
+                .avg("data.entry_list.report.click").as("click")
+                .avg("data.entry_list.report.ctr").as("ctr")
+                .avg("data.entry_list.report.impression").as("impression")
+                // Added missing fields with avg aggregation
+                .avg("data.entry_list.report.broad_roi").as("roas")
+                .avg("data.entry_list.report.broad_order").as("broadOrder")
+                .avg("data.entry_list.report.broad_gmv").as("broadGmv")
+                .avg("data.entry_list.report.direct_order").as("directOrder")
+                .avg("data.entry_list.report.direct_order_amount").as("directOrderAmount")
+                .avg("data.entry_list.report.direct_gmv").as("directGmv")
+                .avg("data.entry_list.report.direct_roi").as("directRoi")
+                .avg("data.entry_list.report.direct_cir").as("directCir")
+                .avg("data.entry_list.report.direct_cr").as("directCr")
+                .sum("data.entry_list.report.cost").as("cost")
+                .avg("data.entry_list.report.cpdc").as("cpdc")
+                // Added ratio fields with avg aggregation
+                .avg("data.entry_list.ratio.broad_cir").as("acosRatio")
+                .avg("data.entry_list.ratio.cpc").as("cpcRatio")
+                .avg("data.entry_list.ratio.click").as("clickRatio")
+                .avg("data.entry_list.ratio.ctr").as("ctrRatio")
+                .avg("data.entry_list.ratio.impression").as("impressionRatio")
+                .avg("data.entry_list.ratio.cost").as("costRatio")
+                .avg("data.entry_list.ratio.broad_gmv").as("broadGmvRatio")
+                .avg("data.entry_list.ratio.broad_order").as("broadOrderRatio")
+                .avg("data.entry_list.ratio.checkout").as("checkoutRatio")
+                .avg("data.entry_list.ratio.direct_order").as("directOrderRatio")
+                .avg("data.entry_list.ratio.direct_order_amount").as("directOrderAmountRatio")
+                .avg("data.entry_list.ratio.direct_gmv").as("directGmvRatio")
+                .avg("data.entry_list.ratio.direct_roi").as("directRoiRatio")
+                .avg("data.entry_list.ratio.direct_cir").as("directCirRatio")
+                .avg("data.entry_list.ratio.direct_cr").as("directCrRatio")
+                .avg("data.entry_list.ratio.cpdc").as("cpdcRatio")
+                // Added type field
+                .first("data.entry_list.type").as("type")
+                .first("from").as("shopeeFrom")
+                .first("to").as("shopeeTo")
         );
 
         baseOps.add(Aggregation.project()
                 .andExpression("_id").as("campaignId")
                 .andInclude("id", "shopId", "createdAt", "title", "image", "state",
-                        "dailyBudget", "biddingStrategy", "cpc", "acos", "click", "ctr", "impression")
+                        "dailyBudget", "biddingStrategy", "cpc", "acos", "click", "ctr", "impression",
+                        "roas", "broadOrder", "broadGmv", "directOrder", "directOrderAmount",
+                        "directGmv", "directRoi", "directCir", "directCr", "cost", "cpdc",
+                        "acosRatio", "cpcRatio", "clickRatio", "ctrRatio", "impressionRatio",
+                        "costRatio", "broadGmvRatio", "broadOrderRatio", "checkoutRatio",
+                        "directOrderRatio", "directOrderAmountRatio", "directGmvRatio",
+                        "directRoiRatio", "directCirRatio", "directCrRatio", "cpdcRatio",
+                        "type", "shopeeFrom", "shopeeTo")
                 .andExpression("{$literal: '" + from.toString() + "'}").as("from")
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
+
+        // Add explicit sorting for consistent results
+        baseOps.add(Aggregation.sort(Sort.by(Sort.Direction.DESC, "createdAt")
+                .and(Sort.by(Sort.Direction.ASC, "campaignId"))));
 
         // Lookup keywords
         baseOps.add(Aggregation.lookup(
@@ -190,292 +230,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         return new PageImpl<>(dtos, pageable, total);
     }
-//    @Override
-//    public Page<ProductAdsResponseDto> findByRangeAgg(
-//            String shopId,
-//            String biddingStrategy,
-//            LocalDateTime from,
-//            LocalDateTime to,
-//            Pageable pageable
-//    ) {
-//        Merchant merchant = merchantRepository
-//                .findByShopeeMerchantId(shopId)
-//                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
-//        KPI kpi = kpiRepository
-//                .findByMerchantId(merchant.getId())
-//                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
-//
-//        List<AggregationOperation> baseOps = new ArrayList<>();
-//
-//        baseOps.add(Aggregation.match(
-//                Criteria.where("shop_id").is(shopId)
-//                        .and("createdAt").gte(from).lte(to)
-//        ));
-//        baseOps.add(Aggregation.unwind("data.entry_list"));
-//        if (biddingStrategy != null) {
-//            baseOps.add(Aggregation.match(
-//                    Criteria.where("data.entry_list.manual_product_ads.bidding_strategy")
-//                            .is(biddingStrategy)
-//            ));
-//        }
-//        baseOps.add(Aggregation.group("data.entry_list.campaign.campaign_id")
-//                .first("_id").as("id")
-//                .first("shop_id").as("shopId")
-//                .first(Aggregation.bind("from", "from").toString()).as("from")
-//                .first(Aggregation.bind("to",   "to").toString()).as("to")
-//                .last("createdAt").as("createdAt")
-//                .first("data.entry_list.title").as("title")
-//                .first("data.entry_list.image").as("image")
-//                .first("data.entry_list.state").as("state")
-//                .sum("data.entry_list.campaign.daily_budget").as("dailyBudget")
-//                .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
-//                .avg("data.entry_list.report.cpc").as("cpc")
-//                .avg("data.entry_list.report.broad_cir").as("acos")
-//                .avg("data.entry_list.report.click").as("click")
-//                .avg("data.entry_list.report.ctr").as("ctr")
-//                .sum("data.entry_list.report.impression").as("impression")
-//        );
-//        baseOps.add(Aggregation.project()
-//                .andExpression("_id").as("campaignId")
-//                .andInclude("id","shopId","from","to","createdAt","title","image","state",
-//                        "dailyBudget","biddingStrategy","cpc","acos","click","ctr","impression")
-//        );
-//        baseOps.add(Aggregation.lookup(
-//                "ProductKey",                "campaignId",                "campaign_id",                "keywords"        ));
-//
-//        FacetOperation facet = Aggregation.facet(
-//                        Aggregation.skip((long) pageable.getOffset()),
-//                        Aggregation.limit(pageable.getPageSize())
-//                ).as("pagedResults")
-//                .and(Aggregation.count().as("total")).as("countResult");
-//
-//        List<AggregationOperation> fullPipeline = new ArrayList<>(baseOps);
-//        fullPipeline.add(facet);
-//
-//        AggregationResults<Document> aggResults = mongoTemplate.aggregate(
-//                Aggregation.newAggregation(fullPipeline),
-//                "ProductAds",
-//                Document.class
-//        );
-//
-//        List<Document> mapped = aggResults.getMappedResults();
-//        if (mapped.isEmpty()) {
-//            return new PageImpl<>(Collections.emptyList(), pageable, 0);
-//        }
-//
-//        Document root = mapped.get(0);
-//        @SuppressWarnings("unchecked")
-//        List<Document> docs = (List<Document>) root.get("pagedResults");
-//        int total = ((List<?>)root.get("countResult")).isEmpty()
-//                ? 0
-//                : ((Document)((List<?>)root.get("countResult")).get(0)).getInteger("total");
-//
-//        List<ProductAdsResponseDto> dtos = new ArrayList<>();
-//        for (Document doc : docs) {
-//            ProductAdsResponseDto dto = new ProductAdsResponseDto();
-//            dto.setId(doc.getObjectId("id").toString());
-//            dto.setShopeeMerchantId(doc.getString("shopId"));
-//            dto.setFrom(doc.getString("from"));
-//            dto.setTo(doc.getString("to"));
-//            dto.setCreatedAt(doc.getDate("createdAt")
-//                    .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-//            Object camp = doc.get("campaignId");
-//            dto.setCampaignId(camp instanceof Number ? ((Number) camp).longValue() : null);
-//            dto.setTitle(doc.getString("title"));
-//            dto.setImage(doc.getString("image"));
-//            dto.setState(doc.getString("state"));
-//            Object db = doc.get("dailyBudget");
-//            dto.setDailyBudget((db instanceof Number ? ((Number) db).doubleValue() : 0.0) / 100000);
-//            dto.setBiddingStrategy(doc.getString("biddingStrategy"));
-//            dto.setCpc(doc.getDouble("cpc"));
-//            dto.setAcos(doc.getDouble("acos"));
-//            dto.setClick(doc.getDouble("click"));
-//            dto.setCtr(doc.getDouble("ctr"));
-//            Object imp = doc.get("impression");
-//            dto.setImpression(imp instanceof Number ? ((Number) imp).doubleValue() : 0.0);
-//
-//            @SuppressWarnings("unchecked")
-//            List<Document> kwDocs = (List<Document>) doc.get("keywords");
-//            List<ProductKeywordResponseDto> kws = kwDocs.stream()
-//                    .flatMap(kd -> {
-//                        Object rawData = kd.get("data");
-//                        List<Document> dataDocs = new ArrayList<>();
-//                        if (rawData instanceof List) {
-//                            dataDocs.addAll((List<Document>) rawData);
-//                        } else if (rawData instanceof Document) {
-//                            dataDocs.add((Document) rawData);
-//                        }
-//
-//                        if (!dataDocs.isEmpty()) {
-//                            return dataDocs.stream().map(data -> {
-//                                ProductKeywordResponseDto pk = new ProductKeywordResponseDto();
-//                                pk.setId(kd.getObjectId("_id").toString());
-//                                pk.setShopeeMerchantId(kd.getString("shop_id"));
-//                                Object cid = kd.get("campaign_id");
-//                                pk.setCampaignId(cid instanceof Number ? ((Number) cid).longValue() : null);
-//                                pk.setFrom(kd.getString("from"));
-//                                pk.setTo(kd.getString("to"));
-//                                if (kd.getDate("createdAt") != null) {
-//                                    pk.setCreatedAt(kd.getDate("createdAt")
-//                                            .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-//                                }
-//                                pk.setKey(data.getString("key"));
-//                                Document metrics = data.get("metrics", Document.class);
-//                                if (metrics != null) {
-//                                    Object rawAcos = metrics.get("acos");
-//                                    if (rawAcos instanceof Double) {
-//                                        pk.setAcos((Double) rawAcos);
-//                                    } else if (rawAcos instanceof Integer) {
-//                                        pk.setAcos(((Integer) rawAcos).doubleValue());
-//                                    } else if (rawAcos instanceof  Long) {
-//                                        pk.setAcos(((Long) rawAcos).doubleValue());
-//                                    }
-//                                    else {
-//                                        pk.setAcos(0d);
-//                                    }
-//
-//                                    Object rawCpc = metrics.get("cpc");
-//                                    if (rawCpc instanceof Double) {
-//                                        pk.setCpc((Double) rawCpc);
-//                                    } else if (rawCpc instanceof Integer) {
-//                                        pk.setCpc(((Integer) rawCpc).doubleValue());
-//                                    } else {
-//                                        pk.setCpc(0d);
-//                                    }
-//
-//                                    Object rawCost = metrics.get("cost");
-//                                    if (rawCost instanceof Double) {
-//                                        pk.setCost((Double) rawCost);
-//                                    } else if (rawCost instanceof Integer) {
-//                                        pk.setCost(((Integer) rawCost).doubleValue());
-//                                    } else {
-//                                        pk.setCost(0d);
-//                                    }
-//
-//                                    Object rawImpression = metrics.get("impression");
-//                                    if (rawImpression instanceof Double) {
-//                                        pk.setImpression((Double) rawImpression);
-//                                    } else if (rawImpression instanceof Integer) {
-//                                        pk.setImpression(((Integer) rawImpression).doubleValue());
-//                                    } else {
-//                                        pk.setImpression(0d);
-//                                    }
-//
-//                                    Object rawClick = metrics.get("click");
-//                                    if (rawClick instanceof Double) {
-//                                        pk.setClick((Double) rawClick);
-//                                    } else if (rawClick instanceof Integer) {
-//                                        pk.setClick(((Integer) rawClick).doubleValue());
-//                                    } else {
-//                                        pk.setClick(0d);
-//                                    }
-//
-//                                    Object rawCtr = metrics.get("ctr");
-//                                    if (rawCtr instanceof Double) {
-//                                        pk.setCtr((Double) rawCtr);
-//                                    } else if (rawCtr instanceof Integer) {
-//                                        pk.setCtr(((Integer) rawCtr).doubleValue());
-//                                    } else {
-//                                        pk.setCtr(0d);
-//                                    }
-//                                }
-//
-//                                Recommendation rec = MathKt.formulateRecommendation(
-//                                        dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, null, null);
-//                                dto.setInsight(MathKt.renderInsight(rec));
-//
-//                                Recommendation rec2 = MathKt.formulateRecommendation(
-//                                        pk.getCpc(), pk.getAcos(), pk.getClick(), kpi, null, null);
-//
-//                                pk.setInsight(MathKt.renderInsight(rec2));
-//
-//
-//                                return pk;
-//                            });
-//                        } else {
-//                            ProductKeywordResponseDto pk = new ProductKeywordResponseDto();
-//                            pk.setId(kd.getObjectId("_id").toString());
-//                            pk.setShopeeMerchantId(kd.getString("shop_id"));
-//                            Object cid = kd.get("campaign_id");
-//                            pk.setCampaignId(cid instanceof Number ? ((Number) cid).longValue() : null);
-//                            pk.setFrom(kd.getString("from"));
-//                            pk.setTo(kd.getString("to"));
-//                            if (kd.getDate("createdAt") != null) {
-//                                pk.setCreatedAt(kd.getDate("createdAt")
-//                                        .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-//                            }
-//                            pk.setKey(kd.getString("key"));
-//                            pk.setAcos(kd.getDouble("acos"));
-//                            pk.setCpc(kd.getDouble("cpc"));
-//                            pk.setCost(kd.getDouble("cost"));
-//                            pk.setImpression(kd.getDouble("impression"));
-//                            pk.setClick(kd.getDouble("click"));
-//                            pk.setCtr(kd.getDouble("ctr"));
-//
-//                            Recommendation rec = MathKt.formulateRecommendation(
-//                                    dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, null, null);
-//                            dto.setInsight(MathKt.renderInsight(rec));
-//
-//                            Recommendation rec2 = MathKt.formulateRecommendation(
-//                                    pk.getCpc(), pk.getAcos(), pk.getClick(), kpi, null, null);
-//
-//                            pk.setInsight(MathKt.renderInsight(rec2));
-//
-//
-//                            return Stream.of(pk);
-//                        }
-//                    })
-//                    .collect(Collectors.toList());
-//
-//            dto.setKeywords(kws);
-//            dto.setHasKeywords(!kws.isEmpty());
-//
-//
-//            Recommendation rec = MathKt.formulateRecommendation(
-//                    dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, null, null);
-//            dto.setInsight(MathKt.renderInsight(rec));
-//
-//            dtos.add(dto);
-//        }
-//
-//        return new PageImpl<>(dtos, pageable, total);
-//    }
-//
-//    private List<ProductKeywordResponseDto> getKeywordsForCampaign(Long campaignId, String shopId, LocalDateTime from, LocalDateTime to) {
-//        List<AggregationOperation> keywordOperations = new ArrayList<>();
-//
-//        keywordOperations.add(Aggregation.match(
-//                Criteria.where("shop_id").is(shopId)
-//                        .and("createdAt").gte(from).lte(to)
-//                        .and("campaign_id").is(campaignId)
-//        ));
-//
-//        keywordOperations.add(Aggregation.unwind("data"));
-//
-//        keywordOperations.add(Aggregation.project()
-//                .and("_id").as("id")
-//                .and("shop_id").as("shopeeMerchantId")
-//                .and("campaign_id").as("campaignId")
-//                .and("from").as("from")
-//                .and("to").as("to")
-//                .and("createdAt").as("createdAt")
-//                .and("data.key").as("key")
-//                .and("data.metrics.broadCir").as("acos")
-//                .and("data.metrics.cpc").as("cpc")
-//                .and("data.metrics.cost").as("cost")
-//                .and("data.metrics.click").as("click")
-//                .and("data.metrics.ctr").as("ctr")
-//                .and("data.metrics.impression").as("impression")
-//        );
-//
-//        AggregationResults<ProductKeywordResponseDto> keywordResults = mongoTemplate.aggregate(
-//                Aggregation.newAggregation(keywordOperations),
-//                "ProductKey",
-//                ProductKeywordResponseDto.class
-//        );
-//
-//        return keywordResults.getMappedResults();
-//    }
 
     @Override
     public Page<ProductAdsResponseDto> findByRange(
@@ -538,7 +292,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.report.click").as("click")
                 .and("data.entry_list.report.ctr").as("ctr")
                 .and("data.entry_list.report.impression").as("impression")
-                .and("data.entry_list.report.broad_roi").as("roas")
+                .and("data.entry_list.report.broad_roi").as("broadRoi")
                 .and("data.entry_list.report.broad_order").as("broadOrder")
                 .and("data.entry_list.report.broad_gmv").as("broadGmv")
                 .and("data.entry_list.report.direct_order").as("directOrder")
@@ -565,6 +319,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.ratio.direct_cir").as("directCirRatio")
                 .and("data.entry_list.ratio.direct_cr").as("directCrRatio")
                 .and("data.entry_list.ratio.cpdc").as("cpdcRatio")
+                .and("data.entry_list.ratio.broad_roi").as("broadRoiRatio")
                 .and("data.entry_list.type").as("type")
                 .and("from").as("shopeeFrom")
                 .and("to").as("shopeeTo")
@@ -653,7 +408,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setClick(getDouble(doc, "click"));
         dto.setCtr(getDouble(doc, "ctr"));
         dto.setImpression(getDouble(doc, "impression"));
-        dto.setRoas(getDouble(doc, "roas"));
+        dto.setBroadRoi(getDouble(doc, "broad_roi"));
+        dto.setBroadRoiRatio(getDouble(doc, "broad_roi_ratio"));
         dto.setShopeeFrom(getString(doc, "shopeeFrom"));
         dto.setShopeeTo(getString(doc, "shopeeTo"));
         dto.setAcosRatio(getDouble(doc, "acosRatio"));
@@ -779,5 +535,275 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             return ((Number) v).doubleValue();
         }
         return null;
+    }
+
+    @Override
+    public Page<ProductAdsResponseDto> findTodayData(
+            String shopId,
+            String biddingStrategy,
+            Pageable pageable
+    ) {
+        // Get today's date range (start and end of today)
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+
+        Merchant merchant = merchantRepository
+                .findByShopeeMerchantId(shopId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
+        KPI kpi = kpiRepository
+                .findByMerchantId(merchant.getId())
+                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
+
+        List<AggregationOperation> baseOps = new ArrayList<>();
+
+        // Match by shop_id and TODAY's date range
+        baseOps.add(Aggregation.match(
+                Criteria.where("shop_id").is(shopId)
+                        .and("createdAt").gte(startOfDay).lte(endOfDay)
+        ));
+
+        // Unwind entry list
+        baseOps.add(Aggregation.unwind("data.entry_list"));
+
+        // Filter by bidding strategy if provided
+        if (biddingStrategy != null) {
+            baseOps.add(Aggregation.match(
+                    Criteria.where("data.entry_list.manual_product_ads.bidding_strategy")
+                            .is(biddingStrategy)
+            ));
+        }
+
+        // Group by campaign_id with aggregations
+        baseOps.add(Aggregation.group("data.entry_list.campaign.campaign_id")
+                .first("_id").as("id")
+                .first("shop_id").as("shopId")
+                .first("createdAt").as("createdAt")
+                .first("data.entry_list.title").as("title")
+                .first("data.entry_list.image").as("image")
+                .first("data.entry_list.state").as("state")
+                .sum("data.entry_list.campaign.daily_budget").as("dailyBudget")
+                .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
+                .avg("data.entry_list.report.cpc").as("cpc")
+                .avg("data.entry_list.report.broad_cir").as("acos")
+                .avg("data.entry_list.report.click").as("click")
+                .avg("data.entry_list.report.ctr").as("ctr")
+                .avg("data.entry_list.report.impression").as("impression")
+                .avg("data.entry_list.report.broad_roi").as("broadRoi")
+                .avg("data.entry_list.report.broad_order").as("broadOrder")
+                .avg("data.entry_list.report.broad_gmv").as("broadGmv")
+                .avg("data.entry_list.report.direct_order").as("directOrder")
+                .avg("data.entry_list.report.direct_order_amount").as("directOrderAmount")
+                .avg("data.entry_list.report.direct_gmv").as("directGmv")
+                .avg("data.entry_list.report.direct_roi").as("directRoi")
+                .avg("data.entry_list.report.direct_cir").as("directCir")
+                .avg("data.entry_list.report.direct_cr").as("directCr")
+                .sum("data.entry_list.report.cost").as("cost")
+                .avg("data.entry_list.report.cpdc").as("cpdc")
+                .avg("data.entry_list.ratio.broad_cir").as("acosRatio")
+                .avg("data.entry_list.ratio.cpc").as("cpcRatio")
+                .avg("data.entry_list.ratio.click").as("clickRatio")
+                .avg("data.entry_list.ratio.ctr").as("ctrRatio")
+                .avg("data.entry_list.ratio.impression").as("impressionRatio")
+                .avg("data.entry_list.ratio.cost").as("costRatio")
+                .avg("data.entry_list.ratio.broad_gmv").as("broadGmvRatio")
+                .avg("data.entry_list.ratio.broad_order").as("broadOrderRatio")
+                .avg("data.entry_list.ratio.checkout").as("checkoutRatio")
+                .avg("data.entry_list.ratio.direct_order").as("directOrderRatio")
+                .avg("data.entry_list.ratio.direct_order_amount").as("directOrderAmountRatio")
+                .avg("data.entry_list.ratio.direct_gmv").as("directGmvRatio")
+                .avg("data.entry_list.ratio.direct_roi").as("directRoiRatio")
+                .avg("data.entry_list.ratio.direct_cir").as("directCirRatio")
+                .avg("data.entry_list.ratio.direct_cr").as("directCrRatio")
+                        .avg("data.entry_list.ratio.broad_roi").as("broadRoiRatio")
+                .avg("data.entry_list.ratio.cpdc").as("cpdcRatio")
+                .first("data.entry_list.type").as("type")
+                .first("from").as("shopeeFrom")
+                .first("to").as("shopeeTo")
+                .first("data.entry_list.custom_roas").as("customRoas")
+        );
+
+        baseOps.add(Aggregation.project()
+                .andExpression("_id").as("campaignId")
+                .andInclude("id", "shopId", "createdAt", "title", "image", "state",
+                        "dailyBudget", "biddingStrategy", "cpc", "acos", "click", "ctr", "impression",
+                        "roas", "broadOrder", "broadGmv", "directOrder", "directOrderAmount",
+                        "directGmv", "directRoi", "directCir", "directCr", "cost", "cpdc",
+                        "acosRatio", "cpcRatio", "clickRatio", "ctrRatio", "impressionRatio",
+                        "costRatio", "broadGmvRatio", "broadOrderRatio", "checkoutRatio",
+                        "directOrderRatio", "directOrderAmountRatio", "directGmvRatio",
+                        "directRoiRatio", "directCirRatio", "directCrRatio", "cpdcRatio",
+                        "type", "shopeeFrom", "shopeeTo", "customRoas")
+                .andExpression("{$literal: '" + startOfDay.toString() + "'}").as("from")
+                .andExpression("{$literal: '" + endOfDay.toString() + "'}").as("to")
+        );
+
+        // Add explicit sorting for consistent results
+        baseOps.add(Aggregation.sort(Sort.by(Sort.Direction.DESC, "createdAt")
+                .and(Sort.by(Sort.Direction.ASC, "campaignId"))));
+
+        // Lookup keywords
+        baseOps.add(Aggregation.lookup(
+                "ProductKey",
+                "campaignId",
+                "campaign_id",
+                "keywords"
+        ));
+
+        // Facet for pagination
+        FacetOperation facet = Aggregation.facet(
+                        Aggregation.skip((long) pageable.getOffset()),
+                        Aggregation.limit(pageable.getPageSize())
+                ).as("pagedResults")
+                .and(Aggregation.count().as("total")).as("countResult");
+
+        List<AggregationOperation> fullPipeline = new ArrayList<>(baseOps);
+        fullPipeline.add(facet);
+
+        // Execute aggregation
+        AggregationResults<Document> aggResults = mongoTemplate.aggregate(
+                Aggregation.newAggregation(fullPipeline),
+                "ProductAds",
+                Document.class
+        );
+
+        Document root = aggResults.getMappedResults().stream().findFirst().orElse(null);
+        if (root == null) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Document> docs = (List<Document>) root.get("pagedResults");
+        int total = ((List<?>) root.get("countResult")).isEmpty()
+                ? 0
+                : ((Document) ((List<?>) root.get("countResult")).get(0)).getInteger("total");
+
+        // Map to DTOs with custom ROAS
+        List<ProductAdsResponseDto> dtos = docs.stream()
+                .map(doc -> mapToProductAdsDtoWithCustomRoas(doc, kpi))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtos, pageable, total);
+    }
+
+
+    @Override
+    public boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas) {
+        try {
+            // Get today's date range
+            LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+            LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+
+            // Create query to find today's data for specific shop and campaign
+            Query query = new Query();
+            query.addCriteria(
+                    Criteria.where("shop_id").is(shopId)
+                            .and("createdAt").gte(startOfDay).lte(endOfDay)
+                            .and("data.entry_list.campaign.campaign_id").is(campaignId)
+            );
+
+            // Create update operation to set custom_roas in the matching entry_list element
+            Update update = new Update();
+            update.set("data.entry_list.$.custom_roas", customRoas);
+            update.set("data.entry_list.$.custom_roas_updated_at", LocalDateTime.now());
+
+            // Execute the update
+            var result = mongoTemplate.updateMulti(query, update, "ProductAds");
+
+            return result.getModifiedCount() > 0;
+
+        } catch (Exception e) {
+            System.err.println("Error inserting custom ROAS: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // Method 3: Batch insert custom ROAS untuk multiple campaigns
+    public Map<Long, Boolean> insertCustomRoasForTodayBatch(
+            String shopId,
+            Map<Long, Double> campaignRoasMap
+    ) {
+        Map<Long, Boolean> results = new HashMap<>();
+
+        for (Map.Entry<Long, Double> entry : campaignRoasMap.entrySet()) {
+            Long campaignId = entry.getKey();
+            Double customRoas = entry.getValue();
+
+            boolean success = insertCustomRoasForToday(shopId, campaignId, customRoas);
+            results.put(campaignId, success);
+        }
+
+        return results;
+    }
+
+    // Enhanced mapping method that includes custom ROAS
+    private ProductAdsResponseDto mapToProductAdsDtoWithCustomRoas(Document doc, KPI kpi) {
+        ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi); // Use existing mapping
+
+        // Add custom ROAS if present
+        Double customRoas = getDouble(doc, "customRoas");
+        if (customRoas != null) {
+            dto.setCustomRoas(customRoas);
+            dto.setHasCustomRoas(true);
+
+            dto.setRoas(
+                    MathKt.calculateRoas(
+                            customRoas,
+                            dto.getCost(),
+                            dto.getBroadGmv()
+                    )
+            );
+        } else {
+            dto.setHasCustomRoas(false);
+        }
+
+        return dto;
+    }
+
+    // Method 4: Get summary of today's data with custom ROAS info
+    public Map<String, Object> getTodayDataSummary(String shopId) {
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+
+        List<AggregationOperation> ops = Arrays.asList(
+                Aggregation.match(
+                        Criteria.where("shop_id").is(shopId)
+                                .and("createdAt").gte(startOfDay).lte(endOfDay)
+                ),
+                Aggregation.unwind("data.entry_list"),
+                Aggregation.project()
+                        .andInclude("shop_id")
+                        .andInclude("data.entry_list.report.broad_roi")
+                        .andInclude("data.entry_list.custom_roas")
+                        .andInclude("data.entry_list.report.cost")
+                        .andInclude("data.entry_list.report.broad_gmv")
+                        .andExpression("{ $cond: { if: { $ne: ['$data.entry_list.custom_roas', null] }, then: 1, else: 0 } }")
+                        .as("hasCustomRoas"),
+                Aggregation.group("shop_id")
+                        .count().as("totalCampaigns")
+                        .sum("hasCustomRoas").as("campaignsWithCustomRoas")
+                        .avg("data.entry_list.report.broad_roi").as("avgRoas")
+                        .avg("data.entry_list.custom_roas").as("avgCustomRoas")
+                        .sum("data.entry_list.report.cost").as("totalCost")
+                        .sum("data.entry_list.report.broad_gmv").as("totalGmv")
+        );
+
+        AggregationResults<Document> results = mongoTemplate.aggregate(
+                Aggregation.newAggregation(ops),
+                "ProductAds",
+                Document.class
+        );
+
+        Document summary = results.getMappedResults().stream().findFirst().orElse(new Document());
+
+        Map<String, Object> summaryMap = new HashMap<>();
+        summaryMap.put("date", LocalDateTime.now().toLocalDate().toString());
+        summaryMap.put("totalCampaigns", summary.getInteger("totalCampaigns", 0));
+        summaryMap.put("campaignsWithCustomRoas", summary.getInteger("campaignsWithCustomRoas", 0));
+        summaryMap.put("avgRoas", getDouble(summary, "avgRoas"));
+        summaryMap.put("avgCustomRoas", getDouble(summary, "avgCustomRoas"));
+        summaryMap.put("totalCost", getDouble(summary, "totalCost"));
+        summaryMap.put("totalGmv", getDouble(summary, "totalGmv"));
+
+        return summaryMap;
     }
 }

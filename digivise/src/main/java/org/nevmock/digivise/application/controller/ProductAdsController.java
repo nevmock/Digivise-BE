@@ -8,20 +8,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/product-ads")
 @RequiredArgsConstructor
 public class ProductAdsController {
     private final ProductAdsService productAdsService;
-
 
     @GetMapping("")
     public ResponseEntity<Page<ProductAdsResponseDto>> getProductAdsByShopIdAndFromAndTo(
@@ -95,5 +93,35 @@ public class ProductAdsController {
     public ResponseEntity<List<ProductAdsResponseDto>> getAllProducts(
     ) {
         return ResponseEntity.ok(productAdsService.findAll());
+    }
+
+    @GetMapping("/today")
+    public ResponseEntity<Page<ProductAdsResponseDto>> getTodayProducts(
+            @RequestParam String shopId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String biddingStrategy
+    ) {
+        PageRequest pageRequest = PageRequest.of(page, limit);
+
+        return ResponseEntity.ok(productAdsService.findTodayData(shopId, biddingStrategy, pageRequest));
+    }
+
+    @PostMapping("/custom-roas")
+    public ResponseEntity<Map<String, Object>> insertCustomRoas(
+            @RequestParam String shopId,
+            @RequestParam Long campaignId,
+            @RequestParam Double customRoas
+    ) {
+        boolean success = productAdsService.insertCustomRoasForToday(shopId, campaignId, customRoas);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+        response.put("message", success ? "Custom ROAS berhasil disimpan" : "Gagal menyimpan Custom ROAS");
+        response.put("shopId", shopId);
+        response.put("campaignId", campaignId);
+        response.put("customRoas", customRoas);
+
+        return ResponseEntity.ok(response);
     }
 }

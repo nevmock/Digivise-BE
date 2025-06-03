@@ -80,4 +80,11 @@ public class ProductAdsResponseDto {
     private Double cpdcRatio;
 
     private String type;
+
+    private Double customRoas;
+
+    private Boolean hasCustomRoas;
+
+    private Double broadRoi;
+    private Double broadRoiRatio;
 }
