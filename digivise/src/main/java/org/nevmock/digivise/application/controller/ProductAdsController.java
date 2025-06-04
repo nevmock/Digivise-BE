@@ -21,28 +21,6 @@ import java.util.Map;
 public class ProductAdsController {
     private final ProductAdsService productAdsService;
 
-    @GetMapping("")
-    public ResponseEntity<Page<ProductAdsResponseDto>> getProductAdsByShopIdAndFromAndTo(
-            @RequestParam
-            String shopId,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime from,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime to,
-            @RequestParam(defaultValue = "0")
-            int page,
-            @RequestParam(defaultValue = "10")
-            int limit,
-            @RequestParam(required = false)
-            String biddingStrategy
-    ) {
-        PageRequest pageRequest = PageRequest.of(page, limit);
-
-        return ResponseEntity.ok(productAdsService.findByRangeAgg(shopId, biddingStrategy, from, to, pageRequest));
-    }
-
     @GetMapping("/daily")
     public ResponseEntity<Page<ProductAdsResponseWrapperDto>> getProductAdsByShopIdAndFromAndToTotal(
             @RequestParam
@@ -65,46 +43,6 @@ public class ProductAdsController {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
         return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type));
-    }
-
-    @GetMapping("/old")
-    public ResponseEntity<Page<ProductAdsResponseDto>> getProductAdsByShopIdAndFromAndToOld(
-            @RequestParam
-            String shopId,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime from,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime to,
-            @RequestParam(defaultValue = "0")
-            int page,
-            @RequestParam(defaultValue = "10")
-            int limit,
-            @RequestParam(required = false)
-            String biddingStrategy
-    ) {
-        PageRequest pageRequest = PageRequest.of(page, limit);
-
-        return ResponseEntity.ok(productAdsService.findByRange(shopId, biddingStrategy, from, to, pageRequest));
-    }
-
-    @GetMapping("/all")
-    public ResponseEntity<List<ProductAdsResponseDto>> getAllProducts(
-    ) {
-        return ResponseEntity.ok(productAdsService.findAll());
-    }
-
-    @GetMapping("/today")
-    public ResponseEntity<Page<ProductAdsResponseDto>> getTodayProducts(
-            @RequestParam String shopId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(required = false) String biddingStrategy
-    ) {
-        PageRequest pageRequest = PageRequest.of(page, limit);
-
-        return ResponseEntity.ok(productAdsService.findTodayData(shopId, biddingStrategy, pageRequest));
     }
 
     @PostMapping("/custom-roas")

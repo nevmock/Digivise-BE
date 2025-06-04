@@ -2,6 +2,7 @@ package org.nevmock.digivise.application.dto.product.ads;
 
 import lombok.*;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
+import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,13 +32,9 @@ public class ProductAdsResponseDto {
     private Double click;
     private Double ctr;
     private String insight;
-
     private String state;
     private Double impression;
-
-    private String convertion;
     private Double broadGmv;
-
     private Double broadOrder;
     private Double checkout;
 
@@ -48,6 +45,11 @@ public class ProductAdsResponseDto {
     private Double directCir;
     private Double directCr;
     private Double cpdc;
+    private String insightBudget;
+    private Double broadRoi;
+    private Double cost;
+    private Double broadOrderAmount;
+    private Double cr;
 
     private List<ProductKeywordResponseDto> keywords;
 
@@ -56,10 +58,6 @@ public class ProductAdsResponseDto {
     private String shopId;
 
     private boolean hasKeywords;
-
-    private String insightBudget;
-
-    private Double cost;
 
     private Double acosRatio;
     private Double cpcRatio;
@@ -79,18 +77,38 @@ public class ProductAdsResponseDto {
     private Double directCrRatio;
     private Double cpdcRatio;
 
+    private Double broadRoiRatio;
+    private Double crRatio;
+    private Double broadOrderAmountRatio;
+
     private String type;
-
     private Double customRoas;
-
     private Boolean hasCustomRoas;
 
-    private Double broadRoi;
-    private Double broadRoiRatio;
+    private Double dailyBudgetAvg;
+    private Double roasAvg;
+    private Double clickAvg;
+    private Double ctrAvg;
+    private Double impressionAvg;
+    private Double broadGmvAvg;
+    private Double broadOrderAvg;
+    private Double checkoutAvg;
+    private Double directOrderAvg;
+    private Double directOrderAmountAvg;
+    private Double directGmvAvg;
+    private Double directRoiAvg;
+    private Double directCirAvg;
+    private Double directCrAvg;
+    private Double cpdcAvg;
+    private Double broadRoiAvg;
+    private Double costAvg;
+    private Double broadOrderAmountAvg;
+    private Double crAvg;
 
-    private Double cr;
-    private Double crRatio;
+    private String salesClassification;
 
-    private Double broadOrderAmount;
-    private Double broadOrderAmountRatio;
+    private List<ProductStockResponseDto> productStocks;
+    private Boolean hasProductStock;
+
+    private String productPlacement;
 }

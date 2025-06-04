@@ -10,24 +10,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProductAdsService {
-    List<ProductAdsResponseDto> findAll();
-
-    Optional<ProductAdsResponseDto> findById(String id);
-
-    List<ProductAdsResponseDto> findByShopId(String shopId);
-
-    List<ProductAdsResponseDto> findByCreatedAtBetween(String from, String to);
-
-    List<ProductAdsResponseDto> findByCreatedAtGreaterThanEqual(String from);
-
-    List<ProductAdsResponseDto> findByCreatedAtLessThanEqual(String to);
-
-    List<ProductAdsResponseDto> findByFromAndTo(String from, String to);
-
-    Page<ProductAdsResponseDto> findByRange(String shopId, String biddingStrategy, LocalDateTime from, LocalDateTime to, Pageable pageable);
-
-    Page<ProductAdsResponseDto> findByRangeAgg(String shopId, String biddingStrategy, LocalDateTime from, LocalDateTime to, Pageable pageable);
-
     Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
             String shopId,
             String biddingStrategy,
@@ -35,12 +17,6 @@ public interface ProductAdsService {
             LocalDateTime to,
             Pageable pageable,
             String type
-    );
-
-    Page<ProductAdsResponseDto> findTodayData(
-            String shopId,
-            String biddingStrategy,
-            Pageable pageable
     );
 
     boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas);
