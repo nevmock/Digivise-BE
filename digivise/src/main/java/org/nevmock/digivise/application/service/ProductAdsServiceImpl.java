@@ -403,15 +403,14 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setState(getString(doc, "state"));
         dto.setDailyBudget(getDouble(doc, "dailyBudget") / 100000);
         dto.setBiddingStrategy(getString(doc, "biddingStrategy"));
-        dto.setCpc(getDouble(doc, "cpc"));
+        dto.setCpc(getDouble(doc, "cpc") / 100000);
         dto.setAcos(getDouble(doc, "acos"));
         dto.setClick(getDouble(doc, "click"));
         dto.setCtr(getDouble(doc, "ctr"));
         dto.setImpression(getDouble(doc, "impression"));
         dto.setBroadRoi(getDouble(doc, "broadRoi"));
         dto.setBroadRoiRatio(getDouble(doc, "broadRoiRatio"));
-        dto.setShopeeFrom(getString(doc, "shopeeFrom"));	"camp"
-
+        dto.setShopeeFrom(getString(doc, "shopeeFrom"));
         dto.setShopeeTo(getString(doc, "shopeeTo"));
         dto.setAcosRatio(getDouble(doc, "acosRatio"));
         dto.setCpcRatio(getDouble(doc, "cpcRatio"));
@@ -615,7 +614,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .avg("data.entry_list.ratio.direct_roi").as("directRoiRatio")
                 .avg("data.entry_list.ratio.direct_cir").as("directCirRatio")
                 .avg("data.entry_list.ratio.direct_cr").as("directCrRatio")
-                        .avg("data.entry_list.ratio.broad_roi").as("broadRoiRatio")
+                .avg("data.entry_list.ratio.broad_roi").as("broadRoiRatio")
                 .avg("data.entry_list.ratio.cpdc").as("cpdcRatio")
                 .first("data.entry_list.type").as("type")
                 .first("from").as("shopeeFrom")
