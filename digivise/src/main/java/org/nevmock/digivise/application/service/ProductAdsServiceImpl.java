@@ -172,7 +172,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .andExpression("_id").as("campaignId")
                 .andInclude("id", "shopId", "createdAt", "title", "image", "state",
                         "dailyBudget", "biddingStrategy", "cpc", "acos", "click", "ctr", "impression",
-                        "roas", "broadOrder", "broadGmv", "directOrder", "directOrderAmount",
+                        "broadRoi", "broadOrder", "broadGmv", "directOrder", "directOrderAmount",
                         "directGmv", "directRoi", "directCir", "directCr", "cost", "cpdc",
                         "acosRatio", "cpcRatio", "clickRatio", "ctrRatio", "impressionRatio",
                         "costRatio", "broadGmvRatio", "broadOrderRatio", "checkoutRatio",
