@@ -323,6 +323,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.type").as("type")
                 .and("from").as("shopeeFrom")
                 .and("to").as("shopeeTo")
+                // Tambahkan custom_roas untuk mapping
+                .and("data.entry_list.custom_roas").as("customRoas")
                 .andExpression("{$literal: '" + from.toString() + "'}").as("from")
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
@@ -355,9 +357,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         @SuppressWarnings("unchecked")
         List<Document> docs = (List<Document>) root.get("pagedResults");
-        // Map to DTOs
+
+        // Ganti mapToProductAdsDto dengan mapToProductAdsDtoWithCustomRoas
         List<ProductAdsResponseDto> dtos = docs.stream()
-                .map(doc -> mapToProductAdsDto(doc, kpi))
+                .map(doc -> mapToProductAdsDtoWithCustomRoas(doc, kpi))
                 .toList();
 
         for (ProductAdsResponseDto dto : dtos) {
@@ -439,13 +442,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setCpdcRatio(getDouble(doc, "cpdcRatio"));
         dto.setCost(getDouble(doc, "cost"));
         dto.setType(getString(doc, "type"));
-        dto.setInsightBudget(
-                MathKt.renderInsight(
-                        MathKt.formulateRecommendation(
-                                dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, dto.getRoas(), dto.getDailyBudget()
-                        )
-                )
-        );
 
         @SuppressWarnings("unchecked")
         List<Document> kwDocs = (List<Document>) doc.get("keywords");
@@ -747,6 +743,14 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                             customRoas,
                             dto.getBroadRoi(),
                             dto.getDailyBudget()
+                    )
+            );
+
+            dto.setInsightBudget(
+                    MathKt.renderInsight(
+                            MathKt.formulateRecommendation(
+                                    dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, dto.getRoas(), dto.getDailyBudget()
+                            )
                     )
             );
         } else {
