@@ -403,14 +403,15 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setState(getString(doc, "state"));
         dto.setDailyBudget(getDouble(doc, "dailyBudget") / 100000);
         dto.setBiddingStrategy(getString(doc, "biddingStrategy"));
-        dto.setCpc(new BigDecimal(getDouble(doc, "cpc") ).setScale(5, RoundingMode.CEILING).doubleValue());
+        dto.setCpc(getDouble(doc, "cpc"));
         dto.setAcos(getDouble(doc, "acos"));
         dto.setClick(getDouble(doc, "click"));
         dto.setCtr(getDouble(doc, "ctr"));
         dto.setImpression(getDouble(doc, "impression"));
-        dto.setBroadRoi(getDouble(doc, "broad_roi"));
-        dto.setBroadRoiRatio(getDouble(doc, "broad_roi_ratio"));
-        dto.setShopeeFrom(getString(doc, "shopeeFrom"));
+        dto.setBroadRoi(getDouble(doc, "broadRoi"));
+        dto.setBroadRoiRatio(getDouble(doc, "broadRoiRatio"));
+        dto.setShopeeFrom(getString(doc, "shopeeFrom"));	"camp"
+
         dto.setShopeeTo(getString(doc, "shopeeTo"));
         dto.setAcosRatio(getDouble(doc, "acosRatio"));
         dto.setCpcRatio(getDouble(doc, "cpcRatio"));
@@ -626,7 +627,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .andExpression("_id").as("campaignId")
                 .andInclude("id", "shopId", "createdAt", "title", "image", "state",
                         "dailyBudget", "biddingStrategy", "cpc", "acos", "click", "ctr", "impression",
-                        "roas", "broadOrder", "broadGmv", "directOrder", "directOrderAmount",
+                        "broadRoi", "broadOrder", "broadGmv", "directOrder", "directOrderAmount",
                         "directGmv", "directRoi", "directCir", "directCr", "cost", "cpdc",
                         "acosRatio", "cpcRatio", "clickRatio", "ctrRatio", "impressionRatio",
                         "costRatio", "broadGmvRatio", "broadOrderRatio", "checkoutRatio",
@@ -677,7 +678,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 ? 0
                 : ((Document) ((List<?>) root.get("countResult")).get(0)).getInteger("total");
 
-        // Map to DTOs with custom ROAS
         List<ProductAdsResponseDto> dtos = docs.stream()
                 .map(doc -> mapToProductAdsDtoWithCustomRoas(doc, kpi))
                 .collect(Collectors.toList());
@@ -735,11 +735,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         return results;
     }
 
-    // Enhanced mapping method that includes custom ROAS
     private ProductAdsResponseDto mapToProductAdsDtoWithCustomRoas(Document doc, KPI kpi) {
         ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi); // Use existing mapping
 
-        // Add custom ROAS if present
         Double customRoas = getDouble(doc, "customRoas");
         if (customRoas != null) {
             dto.setCustomRoas(customRoas);
@@ -748,8 +746,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             dto.setRoas(
                     MathKt.calculateRoas(
                             customRoas,
-                            dto.getCost(),
-                            dto.getBroadGmv()
+                            dto.getBroadRoi(),
+                            dto.getDailyBudget()
                     )
             );
         } else {
