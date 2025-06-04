@@ -294,6 +294,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.report.impression").as("impression")
                 .and("data.entry_list.report.broad_roi").as("broadRoi")
                 .and("data.entry_list.report.broad_order").as("broadOrder")
+                .and("data.entry_list.report.broad_order_amount").as("broadOrderAmount")
                 .and("data.entry_list.report.broad_gmv").as("broadGmv")
                 .and("data.entry_list.report.direct_order").as("directOrder")
                 .and("data.entry_list.report.direct_order_amount").as("directOrderAmount")
@@ -322,6 +323,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.ratio.broad_roi").as("broadRoiRatio")
                         .and("data.entry_list.ratio.cr").as("crRatio")
                         .and("data.entry_list.report.cr").as("cr")
+                .and("data.entry_list.ratio.broad_order_amount").as("broadOrderAmountRatio")
                 .and("data.entry_list.type").as("type")
                 .and("from").as("shopeeFrom")
                 .and("to").as("shopeeTo")
@@ -446,6 +448,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setType(getString(doc, "type"));
         dto.setCr(getDouble(doc, "cr"));
         dto.setCrRatio(getDouble(doc, "crRatio"));
+        dto.setBroadOrderAmountRatio(getDouble(doc, "broadOrderAmountRatio"));
+        dto.setBroadOrderAmount(getDouble(doc, "broadOrderAmount"));
 
         @SuppressWarnings("unchecked")
         List<Document> kwDocs = (List<Document>) doc.get("keywords");

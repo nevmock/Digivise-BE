@@ -90,4 +90,7 @@ public class ProductAdsResponseDto {
 
     private Double cr;
     private Double crRatio;
+
+    private Double broadOrderAmount;
+    private Double broadOrderAmountRatio;
 }
