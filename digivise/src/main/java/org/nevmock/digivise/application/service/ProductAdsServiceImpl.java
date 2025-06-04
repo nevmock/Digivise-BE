@@ -320,6 +320,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.ratio.direct_cr").as("directCrRatio")
                 .and("data.entry_list.ratio.cpdc").as("cpdcRatio")
                 .and("data.entry_list.ratio.broad_roi").as("broadRoiRatio")
+                        .and("data.entry_list.ratio.cr").as("crRatio")
+                        .and("data.entry_list.report.cr").as("cr")
                 .and("data.entry_list.type").as("type")
                 .and("from").as("shopeeFrom")
                 .and("to").as("shopeeTo")
@@ -442,6 +444,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setCpdcRatio(getDouble(doc, "cpdcRatio"));
         dto.setCost(getDouble(doc, "cost"));
         dto.setType(getString(doc, "type"));
+        dto.setCr(getDouble(doc, "cr"));
+        dto.setCrRatio(getDouble(doc, "crRatio"));
 
         @SuppressWarnings("unchecked")
         List<Document> kwDocs = (List<Document>) doc.get("keywords");
