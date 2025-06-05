@@ -2,6 +2,8 @@ package org.nevmock.digivise.application.dto.product.stock;
 
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @RequiredArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -12,7 +14,9 @@ public class ProductStockResponseDto {
     private String id;
 
     private Integer soldCount;
-    private Integer sellingPriceMax;
+    private String sellingPriceMax;
+    private LocalDateTime createdAt;
 
     private Integer revenue;
+
 }
