@@ -20,5 +20,6 @@ jobs:
             cd /home/rahman/Digivise-BE
             git reset --hard HEAD
             git pull origin main --rebase
+            cd digivise/
             mvn compile
             sudo systemctl restart digivise.service
