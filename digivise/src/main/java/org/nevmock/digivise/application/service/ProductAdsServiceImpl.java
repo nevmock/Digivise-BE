@@ -4,7 +4,6 @@ import org.bson.Document;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
-import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseDto;
 import org.nevmock.digivise.domain.model.KPI;
 import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
@@ -97,7 +96,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("data.entry_list.state").as("state")
                 .and("data.entry_list.campaign.daily_budget").as("dailyBudget")
                 .and("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
-                        .and("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
+                .and("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
                 .and("data.entry_list.report.cpc").as("cpc")
                 .and("data.entry_list.report.broad_cir").as("acos")
                 .and("data.entry_list.report.click").as("click")
@@ -151,6 +150,28 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 "campaign_id",
                 "keywords"
         ));
+
+        baseOps.add(
+                Aggregation.lookup()
+                        .from("ProductStock")
+                        .let(
+                                VariableOperators.Let.ExpressionVariable
+                                        .newVariable("campaign_id")
+                                        .forField("campaignId")
+                        )
+                        .pipeline(
+                                Aggregation.match(
+                                        Criteria.expr(
+                                                ComparisonOperators.Eq.valueOf("$data.boost_info.campaign_id")
+                                                        .equalTo("$campaign_id")
+                                        )
+                                ),
+                                Aggregation.project()
+                                        .and("data.statistics.sold_count").as("soldCount")
+                                        .and("data.price_detail.selling_price_max").as("sellingPriceMax")
+                        )
+                        .as("productStock")
+        );
 
         FacetOperation facet = Aggregation.facet(
                         Aggregation.skip((long) pageable.getOffset()),
