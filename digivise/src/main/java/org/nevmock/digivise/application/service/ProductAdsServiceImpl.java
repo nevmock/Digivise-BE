@@ -143,7 +143,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
 
-
         baseOps.add(Aggregation.lookup(
                 "ProductKey",
                 "campaignId",
