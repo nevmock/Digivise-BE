@@ -41,4 +41,10 @@ public class Merchant {
 
     @Column(name = "updated_at")
     private Timestamp updatedAt;
+
+    @Column(name = "username", nullable = true, length = 255)
+    private String username;
+
+    @Column(name = "password", nullable = true, length = 255)
+    private String password;
 }

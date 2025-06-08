@@ -1,4 +1,4 @@
 package org.nevmock.digivise.application.dto.product.stock;
 
-public class ProductStockResponseDto {
+public class ProductStockResponseWrapperDto {
 }

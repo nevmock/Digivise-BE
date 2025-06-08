@@ -4,6 +4,7 @@ import org.bson.Document;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
+import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseClassificationDto;
 import org.nevmock.digivise.domain.model.KPI;
 import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -23,8 +23,6 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -86,6 +84,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                             .is(type)
             ));
         }
+
         baseOps.add(Aggregation.project()
                 .and("_id").as("id")
                 .and("shop_id").as("shopId")
@@ -143,6 +142,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
 
+
         baseOps.add(Aggregation.lookup(
                 "ProductKey",
                 "campaignId",
@@ -159,18 +159,25 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                                         .forField("campaignId")
                         )
                         .pipeline(
+                                Aggregation.unwind("data"),
+
                                 Aggregation.match(
                                         Criteria.expr(
                                                 ComparisonOperators.Eq.valueOf("$data.boost_info.campaign_id")
-                                                        .equalTo("$campaign_id")
+                                                        .equalTo("$$campaign_id")
                                         )
                                 ),
+
                                 Aggregation.project()
+                                        .and("_id").as("id")
+                                        .and("data.boost_info.campaign_id").as("campaignId")
                                         .and("data.statistics.sold_count").as("soldCount")
                                         .and("data.price_detail.selling_price_max").as("sellingPriceMax")
+                                        .and("createdAt").as("createdAt")
                         )
                         .as("productStock")
         );
+
 
         FacetOperation facet = Aggregation.facet(
                         Aggregation.skip((long) pageable.getOffset()),
@@ -180,6 +187,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<AggregationOperation> fullPipeline = new ArrayList<>(baseOps);
         fullPipeline.add(facet);
+
 
         AggregationResults<Document> aggResults = mongoTemplate.aggregate(
                 Aggregation.newAggregation(fullPipeline),
@@ -195,16 +203,13 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         @SuppressWarnings("unchecked")
         List<Document> docs = (List<Document>) root.get("pagedResults");
 
-
         List<ProductAdsResponseDto> dtos = docs.stream()
                 .map(doc -> mapToProductAdsDtoWithCustomRoas(doc, kpi))
                 .toList();
 
-
         Map<Long, List<ProductAdsResponseDto>> grouped = dtos.stream()
                 .filter(d -> d.getCampaignId() != null)
-                .collect(Collectors.groupingBy(ProductAdsResponseDto::getCampaignId, LinkedHashMap::new, Collectors.toList()));
-
+                .collect(Collectors.groupingBy(ProductAdsResponseDto::getCampaignId, HashMap::new, Collectors.toList()));
 
         List<ProductAdsResponseWrapperDto> wrapperList = grouped.entrySet().stream()
                 .map(e -> ProductAdsResponseWrapperDto.builder()
@@ -222,6 +227,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         List<ProductAdsResponseWrapperDto> pageContent = start >= end
                 ? Collections.emptyList()
                 : wrapperList.subList(start, end);
+
 
         return new PageImpl<>(pageContent, pageable, wrapperList.size());
     }
@@ -411,34 +417,84 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
     }
 
-    private ProductAdsResponseDto mapToProductAdsDtoWithCustomRoas(Document doc, KPI kpi) {
-        ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
+private ProductAdsResponseDto mapToProductAdsDtoWithCustomRoas(Document doc, KPI kpi) {
+    ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
 
+    Double customRoas = getDouble(doc, "customRoas");
+    if (customRoas != null) {
+        dto.setCustomRoas(customRoas);
+        dto.setHasCustomRoas(true);
 
-        Double customRoas = getDouble(doc, "customRoas");
-        if (customRoas != null) {
-            dto.setCustomRoas(customRoas);
-            dto.setHasCustomRoas(true);
+        dto.setRoas(
+                MathKt.calculateRoas(
+                        customRoas,
+                        dto.getBroadRoi(),
+                        dto.getDailyBudget()
+                )
+        );
 
-            dto.setRoas(
-                    MathKt.calculateRoas(
-                            customRoas,
-                            dto.getBroadRoi(),
-                            dto.getDailyBudget()
-                    )
-            );
+        dto.setInsightBudget(
+                MathKt.renderInsight(
+                        MathKt.formulateRecommendation(
+                                dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, dto.getRoas(), dto.getDailyBudget()
+                        )
+                )
+        );
+    } else {
+        dto.setHasCustomRoas(false);
+    }
 
-            dto.setInsightBudget(
-                    MathKt.renderInsight(
-                            MathKt.formulateRecommendation(
-                                    dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, dto.getRoas(), dto.getDailyBudget()
-                            )
-                    )
-            );
+    @SuppressWarnings("unchecked")
+    List<Document> productStockDocs = (List<Document>) doc.get("productStock");
+    List<ProductStockResponseClassificationDto> productStocks = mapToProductStockDtos(productStockDocs);
+
+    dto.setHasProductStock(!productStocks.isEmpty());
+    dto.setProductStocks(productStocks);
+
+    return dto;
+}
+
+    private List<ProductStockResponseClassificationDto> mapToProductStockDtos(List<Document> productStockDocs) {
+        if (productStockDocs == null || productStockDocs.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return productStockDocs.stream()
+                .map(this::mapToProductStockDto)
+                .collect(Collectors.toList());
+    }
+
+    private ProductStockResponseClassificationDto mapToProductStockDto(Document doc) {
+        ProductStockResponseClassificationDto dto = ProductStockResponseClassificationDto.builder().build();
+
+        dto.setId(getString(doc, "id"));
+        dto.setCampaignId(getLong(doc, "campaignId"));
+        dto.setSoldCount(getInteger(doc, "soldCount"));
+        dto.setSellingPriceMax(getString(doc, "sellingPriceMax"));
+        dto.setCreatedAt(getDateTime(doc, "createdAt"));
+
+        Integer soldCount = dto.getSoldCount();
+        String sellingPriceMaxStr = dto.getSellingPriceMax();
+
+        if (soldCount != null && sellingPriceMaxStr != null) {
+            try {
+                Double sellingPriceMax = Double.parseDouble(sellingPriceMaxStr);
+                dto.setRevenue((int) (soldCount * sellingPriceMax));
+            } catch (NumberFormatException e) {
+                dto.setRevenue(0);
+            }
         } else {
-            dto.setHasCustomRoas(false);
+            dto.setRevenue(0);
         }
 
         return dto;
+    }
+
+    private Integer getInteger(Document doc, String key) {
+        Object v = doc.get(key);
+        if (v instanceof Number) {
+            return ((Number) v).intValue();
+        }
+        return null;
     }
 }
