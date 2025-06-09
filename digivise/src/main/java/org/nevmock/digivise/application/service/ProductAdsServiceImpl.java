@@ -252,8 +252,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setImpression(getDouble(doc, "impression"));
         dto.setBroadRoi(getDouble(doc, "broadRoi"));
         dto.setBroadRoiRatio(getDouble(doc, "broadRoiRatio"));
-        dto.setShopeeFrom(getString(doc, "shopeeFrom"));
-        dto.setShopeeTo(getString(doc, "shopeeTo"));
+        dto.setShopeeFrom(getLong(doc, "shopeeFrom"));
+        dto.setShopeeTo(getLong(doc, "shopeeTo"));
         dto.setAcosRatio(getDouble(doc, "acosRatio"));
         dto.setCpcRatio(getDouble(doc, "cpcRatio"));
         dto.setClickRatio(getDouble(doc, "clickRatio"));
