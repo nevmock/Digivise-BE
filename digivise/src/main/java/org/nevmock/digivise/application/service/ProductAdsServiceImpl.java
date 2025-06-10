@@ -65,10 +65,13 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .findByMerchantId(merchant.getId())
                 .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
 
+        long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
+        long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
+
         List<AggregationOperation> baseOps = new ArrayList<>();
         baseOps.add(Aggregation.match(
                 Criteria.where("shop_id").is(shopId)
-                        .and("createdAt").gte(from).lte(to)
+                        .and("from").gte(fromTimestamp).lte(toTimestamp)
         ));
 
         baseOps.add(Aggregation.unwind("data.entry_list"));
@@ -389,23 +392,23 @@ public class ProductAdsServiceImpl implements ProductAdsService {
     @Override
     public boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas) {
         try {
-
+            // Get current day as Unix timestamp range
             LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
             LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
 
+            long startTimestamp = startOfDay.atZone(ZoneId.systemDefault()).toEpochSecond();
+            long endTimestamp = endOfDay.atZone(ZoneId.systemDefault()).toEpochSecond();
 
             Query query = new Query();
             query.addCriteria(
                     Criteria.where("shop_id").is(shopId)
-                            .and("createdAt").gte(startOfDay).lte(endOfDay)
+                            .and("from").gte(startTimestamp).lte(endTimestamp)
                             .and("data.entry_list.campaign.campaign_id").is(campaignId)
             );
-
 
             Update update = new Update();
             update.set("data.entry_list.$.custom_roas", customRoas);
             update.set("data.entry_list.$.custom_roas_updated_at", LocalDateTime.now());
-
 
             var result = mongoTemplate.updateMulti(query, update, "ProductAds");
 
@@ -417,42 +420,42 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
     }
 
-private ProductAdsResponseDto mapToProductAdsDtoWithCustomRoas(Document doc, KPI kpi) {
-    ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
+    private ProductAdsResponseDto mapToProductAdsDtoWithCustomRoas(Document doc, KPI kpi) {
+        ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
 
-    Double customRoas = getDouble(doc, "customRoas");
-    if (customRoas != null) {
-        dto.setCustomRoas(customRoas);
-        dto.setHasCustomRoas(true);
+        Double customRoas = getDouble(doc, "customRoas");
+        if (customRoas != null) {
+            dto.setCustomRoas(customRoas);
+            dto.setHasCustomRoas(true);
 
-        dto.setRoas(
-                MathKt.calculateRoas(
-                        customRoas,
-                        dto.getBroadRoi(),
-                        dto.getDailyBudget()
-                )
-        );
+            dto.setRoas(
+                    MathKt.calculateRoas(
+                            customRoas,
+                            dto.getBroadRoi(),
+                            dto.getDailyBudget()
+                    )
+            );
 
-        dto.setInsightBudget(
-                MathKt.renderInsight(
-                        MathKt.formulateRecommendation(
-                                dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, dto.getRoas(), dto.getDailyBudget()
-                        )
-                )
-        );
-    } else {
-        dto.setHasCustomRoas(false);
+            dto.setInsightBudget(
+                    MathKt.renderInsight(
+                            MathKt.formulateRecommendation(
+                                    dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, dto.getRoas(), dto.getDailyBudget()
+                            )
+                    )
+            );
+        } else {
+            dto.setHasCustomRoas(false);
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Document> productStockDocs = (List<Document>) doc.get("productStock");
+        List<ProductStockResponseClassificationDto> productStocks = mapToProductStockDtos(productStockDocs);
+
+        dto.setHasProductStock(!productStocks.isEmpty());
+        dto.setProductStocks(productStocks);
+
+        return dto;
     }
-
-    @SuppressWarnings("unchecked")
-    List<Document> productStockDocs = (List<Document>) doc.get("productStock");
-    List<ProductStockResponseClassificationDto> productStocks = mapToProductStockDtos(productStockDocs);
-
-    dto.setHasProductStock(!productStocks.isEmpty());
-    dto.setProductStocks(productStocks);
-
-    return dto;
-}
 
     private List<ProductStockResponseClassificationDto> mapToProductStockDtos(List<Document> productStockDocs) {
         if (productStockDocs == null || productStockDocs.isEmpty()) {
