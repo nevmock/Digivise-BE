@@ -4,7 +4,6 @@ import org.bson.Document;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
-import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseClassificationDto;
 import org.nevmock.digivise.domain.model.KPI;
 import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
@@ -19,6 +18,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
+import static org.springframework.data.mongodb.core.aggregation.ArithmeticOperators.*;
+import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*;
+import static org.springframework.data.mongodb.core.aggregation.ComparisonOperators.*;
+import static org.springframework.data.mongodb.core.aggregation.ConvertOperators.*;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
@@ -145,7 +148,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
 
-
         baseOps.add(Aggregation.lookup(
                 "ProductKey",
                 "campaignId",
@@ -153,6 +155,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 "keywords"
         ));
 
+        
         baseOps.add(
                 Aggregation.lookup()
                         .from("ProductStock")
@@ -162,25 +165,88 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                                         .forField("campaignId")
                         )
                         .pipeline(
+                                
                                 Aggregation.unwind("data"),
 
+                                
                                 Aggregation.match(
                                         Criteria.expr(
-                                                ComparisonOperators.Eq.valueOf("$data.boost_info.campaign_id")
-                                                        .equalTo("$$campaign_id")
+                                                Eq.valueOf("$data.boost_info.campaign_id")
+                                                        .equalTo("$campaign_id")
                                         )
                                 ),
 
+                                
                                 Aggregation.project()
-                                        .and("_id").as("id")
                                         .and("data.boost_info.campaign_id").as("campaignId")
                                         .and("data.statistics.sold_count").as("soldCount")
                                         .and("data.price_detail.selling_price_max").as("sellingPriceMax")
-                                        .and("createdAt").as("createdAt")
-                        )
-                        .as("productStock")
-        );
+                                        .and(Multiply.valueOf(
+                                                IfNull.ifNull("$data.statistics.sold_count").then(0)
+                                        ).multiplyBy(
+                                                IfNull.ifNull(
+                                                        ToDouble.toDouble("$data.price_detail.selling_price_max")
+                                                ).then(0.0)
+                                        )).as("revenue"),
 
+                                
+                                Aggregation.group()
+                                        .sum("revenue").as("totalRevenue")
+                                        .push(Document.parse("{ campaignId: '$campaignId', soldCount: '$soldCount', sellingPriceMax: '$sellingPriceMax', revenue: '$revenue' }"))
+                                        .as("products"),
+
+                                
+                                Aggregation.unwind("products"),
+
+                                
+                                Aggregation.project()
+                                        .and("products.campaignId").as("campaignId")
+                                        .and("products.soldCount").as("soldCount")
+                                        .and("products.sellingPriceMax").as("sellingPriceMax")
+                                        .and("products.revenue").as("revenue")
+                                        .and("totalRevenue").as("totalRevenue")
+                                        .and(Cond.when(
+                                                Gt.valueOf("$totalRevenue").greaterThanValue(0)
+                                        ).then(
+                                                Multiply.valueOf(
+                                                        Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+                                                ).multiplyBy(100)
+                                        ).otherwise(0)).as("revenuePercentage")
+                                        .and(Cond.when(
+                                                        Gte.valueOf(
+                                                                Cond.when(
+                                                                        Gt.valueOf("$totalRevenue").greaterThanValue(0)
+                                                                ).then(
+                                                                        Multiply.valueOf(
+                                                                                Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+                                                                        ).multiplyBy(100)
+                                                                ).otherwise(0)
+                                                        ).greaterThanEqualToValue(30) 
+                                                ).then("Best Seller")
+                                                .otherwise(
+                                                        Cond.when(
+                                                                        Gte.valueOf(
+                                                                                Cond.when(
+                                                                                        Gt.valueOf("$totalRevenue").greaterThanValue(0)
+                                                                                ).then(
+                                                                                        Multiply.valueOf(
+                                                                                                Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+                                                                                        ).multiplyBy(100)
+                                                                                ).otherwise(0)
+                                                                        ).greaterThanEqualToValue(10) 
+                                                                ).then("Middle Moving")
+                                                                .otherwise("Slow Moving")
+                                                )).as("salesClassification"),
+                                
+                                Aggregation.match(
+                                        Criteria.expr(
+                                                Eq.valueOf("$campaignId")
+                                                        .equalTo("$campaign_id")
+                                        )
+                                )
+                        )
+                        .as("salesClassificationData")
+        );
 
         FacetOperation facet = Aggregation.facet(
                         Aggregation.skip((long) pageable.getOffset()),
@@ -190,7 +256,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<AggregationOperation> fullPipeline = new ArrayList<>(baseOps);
         fullPipeline.add(facet);
-
 
         AggregationResults<Document> aggResults = mongoTemplate.aggregate(
                 Aggregation.newAggregation(fullPipeline),
@@ -207,7 +272,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         List<Document> docs = (List<Document>) root.get("pagedResults");
 
         List<ProductAdsResponseDto> dtos = docs.stream()
-                .map(doc -> mapToProductAdsDtoWithCustomRoas(doc, kpi))
+                .map(doc -> mapToProductAdsDtoWithSalesClassification(doc, kpi))
                 .toList();
 
         Map<Long, List<ProductAdsResponseDto>> grouped = dtos.stream()
@@ -224,13 +289,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 )
                 .collect(Collectors.toList());
 
-
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), wrapperList.size());
         List<ProductAdsResponseWrapperDto> pageContent = start >= end
                 ? Collections.emptyList()
                 : wrapperList.subList(start, end);
-
 
         return new PageImpl<>(pageContent, pageable, wrapperList.size());
     }
@@ -359,7 +422,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         return pk;
     }
 
-
     private String getString(Document doc, String key) {
         Object v = doc.get(key);
         return v instanceof String ? (String) v : null;
@@ -389,10 +451,17 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         return null;
     }
 
+    private Integer getInteger(Document doc, String key) {
+        Object v = doc.get(key);
+        if (v instanceof Number) {
+            return ((Number) v).intValue();
+        }
+        return null;
+    }
+
     @Override
     public boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas) {
         try {
-            // Get current day as Unix timestamp range
             LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
             LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
 
@@ -420,9 +489,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
     }
 
-    private ProductAdsResponseDto mapToProductAdsDtoWithCustomRoas(Document doc, KPI kpi) {
+    private ProductAdsResponseDto mapToProductAdsDtoWithSalesClassification(Document doc, KPI kpi) {
         ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
 
+        
         Double customRoas = getDouble(doc, "customRoas");
         if (customRoas != null) {
             dto.setCustomRoas(customRoas);
@@ -447,57 +517,18 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             dto.setHasCustomRoas(false);
         }
 
+        
         @SuppressWarnings("unchecked")
-        List<Document> productStockDocs = (List<Document>) doc.get("productStock");
-        List<ProductStockResponseClassificationDto> productStocks = mapToProductStockDtos(productStockDocs);
+        List<Document> salesClassificationDocs = (List<Document>) doc.get("salesClassificationData");
 
-        dto.setHasProductStock(!productStocks.isEmpty());
-        dto.setProductStocks(productStocks);
-
-        return dto;
-    }
-
-    private List<ProductStockResponseClassificationDto> mapToProductStockDtos(List<Document> productStockDocs) {
-        if (productStockDocs == null || productStockDocs.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return productStockDocs.stream()
-                .map(this::mapToProductStockDto)
-                .collect(Collectors.toList());
-    }
-
-    private ProductStockResponseClassificationDto mapToProductStockDto(Document doc) {
-        ProductStockResponseClassificationDto dto = ProductStockResponseClassificationDto.builder().build();
-
-        dto.setId(getString(doc, "id"));
-        dto.setCampaignId(getLong(doc, "campaignId"));
-        dto.setSoldCount(getInteger(doc, "soldCount"));
-        dto.setSellingPriceMax(getString(doc, "sellingPriceMax"));
-        dto.setCreatedAt(getDateTime(doc, "createdAt"));
-
-        Integer soldCount = dto.getSoldCount();
-        String sellingPriceMaxStr = dto.getSellingPriceMax();
-
-        if (soldCount != null && sellingPriceMaxStr != null) {
-            try {
-                Double sellingPriceMax = Double.parseDouble(sellingPriceMaxStr);
-                dto.setRevenue((int) (soldCount * sellingPriceMax));
-            } catch (NumberFormatException e) {
-                dto.setRevenue(0);
-            }
+        if (salesClassificationDocs != null && !salesClassificationDocs.isEmpty()) {
+            Document salesData = salesClassificationDocs.get(0);
+            String salesClassification = getString(salesData, "salesClassification");
+            dto.setSalesClassification(salesClassification != null ? salesClassification : "UNKNOWN");
         } else {
-            dto.setRevenue(0);
+            dto.setSalesClassification("UNKNOWN");
         }
 
         return dto;
-    }
-
-    private Integer getInteger(Document doc, String key) {
-        Object v = doc.get(key);
-        if (v instanceof Number) {
-            return ((Number) v).intValue();
-        }
-        return null;
     }
 }
