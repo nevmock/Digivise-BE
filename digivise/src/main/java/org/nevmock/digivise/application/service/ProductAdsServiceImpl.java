@@ -75,11 +75,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
         long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
 
-        // Step 1: Get unique campaign IDs with count for pagination
+        
         List<Long> campaignIds = getUniqueCampaignIds(shopId, biddingStrategy, type, state,
                 productPlacement, title, fromTimestamp, toTimestamp);
 
-        // Calculate pagination for campaigns
+        
         int totalCampaigns = campaignIds.size();
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), totalCampaigns);
@@ -90,7 +90,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<Long> paginatedCampaignIds = campaignIds.subList(start, end);
 
-        // Step 2: Get data only for paginated campaigns
+        
         List<ProductAdsResponseWrapperDto> wrapperList = getProductAdsForCampaigns(
                 paginatedCampaignIds, shopId, biddingStrategy, type, state, productPlacement,
                 salesClassification, title, fromTimestamp, toTimestamp, from, to, kpi
@@ -99,21 +99,21 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         return new PageImpl<>(wrapperList, pageable, totalCampaigns);
     }
 
-    // Updated method with additional filter parameters
+    
     private List<Long> getUniqueCampaignIds(String shopId, String biddingStrategy, String type,
                                             String state, String productPlacement, String title,
                                             long fromTimestamp, long toTimestamp) {
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Match base criteria
+        
         Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTimestamp).lte(toTimestamp);
         ops.add(Aggregation.match(matchCriteria));
 
-        // Unwind to access entry_list
+        
         ops.add(Aggregation.unwind("data.entry_list"));
 
-        // Apply filters
+        
         if (biddingStrategy != null && !biddingStrategy.trim().isEmpty()) {
             ops.add(Aggregation.match(
                     Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
@@ -136,17 +136,17 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
         if (title != null && !title.trim().isEmpty()) {
             ops.add(Aggregation.match(
-                    Criteria.where("data.entry_list.title").regex(title, "i") // Case-insensitive regex search
+                    Criteria.where("data.entry_list.title").regex(title, "i") 
             ));
         }
 
-        // Group by campaign_id to get unique IDs
+        
         ops.add(Aggregation.group("data.entry_list.campaign.campaign_id"));
 
-        // Project to get clean campaign ID
+        
         ops.add(Aggregation.project().and("_id").as("campaignId"));
 
-        // Sort for consistent pagination
+        
         ops.add(Aggregation.sort(Sort.Direction.ASC, "campaignId"));
 
         AggregationResults<Document> results = mongoTemplate.aggregate(
@@ -159,7 +159,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .collect(Collectors.toList());
     }
 
-    // Updated method with additional filter parameters
+    
     private List<ProductAdsResponseWrapperDto> getProductAdsForCampaigns(
             List<Long> campaignIds, String shopId, String biddingStrategy, String type,
             String state, String productPlacement, String salesClassification, String title,
@@ -176,19 +176,19 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<Document> docs = results.getMappedResults();
 
-        // Convert to DTOs
+        
         List<ProductAdsResponseDto> dtos = docs.stream()
                 .map(doc -> mapToProductAdsDtoWithSalesClassification(doc, kpi))
                 .collect(Collectors.toList());
 
-        // Apply salesClassification filter after DTO mapping (since it comes from lookup)
+        
         if (salesClassification != null && !salesClassification.trim().isEmpty()) {
             dtos = dtos.stream()
                     .filter(dto -> salesClassification.equalsIgnoreCase(dto.getSalesClassification()))
                     .collect(Collectors.toList());
         }
 
-        // Group by campaign ID and create wrapper DTOs
+        
         Map<Long, List<ProductAdsResponseDto>> grouped = dtos.stream()
                 .filter(d -> d.getCampaignId() != null)
                 .collect(Collectors.groupingBy(
@@ -208,7 +208,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .collect(Collectors.toList());
     }
 
-    // Updated method with additional filter parameters
+    
     private List<AggregationOperation> buildOptimizedAggregationOps(
             List<Long> campaignIds, String shopId, String biddingStrategy, String type,
             String state, String productPlacement, String title,
@@ -216,20 +216,20 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Match with campaign IDs and other criteria
+        
         Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTimestamp).lte(toTimestamp);
         ops.add(Aggregation.match(matchCriteria));
 
-        // Unwind entry list
+        
         ops.add(Aggregation.unwind("data.entry_list"));
 
-        // Filter by campaign IDs first (most selective)
+        
         ops.add(Aggregation.match(
                 Criteria.where("data.entry_list.campaign.campaign_id").in(campaignIds)
         ));
 
-        // Apply additional filters
+        
         if (biddingStrategy != null && !biddingStrategy.trim().isEmpty()) {
             ops.add(Aggregation.match(
                     Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
@@ -252,17 +252,17 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
         if (title != null && !title.trim().isEmpty()) {
             ops.add(Aggregation.match(
-                    Criteria.where("data.entry_list.title").regex(title, "i") // Case-insensitive regex search
+                    Criteria.where("data.entry_list.title").regex(title, "i") 
             ));
         }
 
-        // Project required fields
+        
         ops.add(createProjectionStage(from, to));
 
-        // Add optimized keyword lookup (only for campaigns we need)
+        
         ops.add(Aggregation.lookup()
                 .from("ProductKey")
-                .let(VariableOperators.Let.just( // Use Let.let() to define multiple variables
+                .let(VariableOperators.Let.just( 
                         VariableOperators.Let.ExpressionVariable.newVariable("campaign_id").forField("campaignId"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_from").forField("shopeeFrom"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_to").forField("shopeeTo")
@@ -278,7 +278,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 )
                 .as("keywords"));
 
-        // Add optimized sales classification lookup
+        
         ops.add(createOptimizedSalesClassificationLookup());
 
         return ops;
@@ -289,20 +289,20 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Match with campaign IDs and other criteria
+        
         Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTimestamp).lte(toTimestamp);
         ops.add(Aggregation.match(matchCriteria));
 
-        // Unwind entry list
+        
         ops.add(Aggregation.unwind("data.entry_list"));
 
-        // Filter by campaign IDs first (most selective)
+        
         ops.add(Aggregation.match(
                 Criteria.where("data.entry_list.campaign.campaign_id").in(campaignIds)
         ));
 
-        // Apply additional filters
+        
         if (biddingStrategy != null) {
             ops.add(Aggregation.match(
                     Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
@@ -314,13 +314,13 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             ));
         }
 
-        // Project required fields
+        
         ops.add(createProjectionStage(from, to));
 
-        // Add optimized keyword lookup (only for campaigns we need)
+        
         ops.add(Aggregation.lookup()
                 .from("ProductKey")
-                .let(VariableOperators.Let.just( // Use Let.let() to define multiple variables
+                .let(VariableOperators.Let.just( 
                         VariableOperators.Let.ExpressionVariable.newVariable("campaign_id").forField("campaignId"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_from").forField("shopeeFrom"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_to").forField("shopeeTo")
@@ -336,7 +336,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 )
                 .as("keywords"));
 
-        // Add optimized sales classification lookup
+        
         ops.add(createOptimizedSalesClassificationLookup());
 
         return ops;
@@ -405,7 +405,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .let(VariableOperators.Let.ExpressionVariable
                         .newVariable("campaign_id").forField("campaignId"))
                 .pipeline(
-                        // First match to reduce dataset
+                        
                         Aggregation.match(Criteria.expr(
                                 Eq.valueOf("$data.boost_info.campaign_id").equalTo("$$campaign_id")
                         )),
@@ -413,7 +413,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                         Aggregation.match(Criteria.expr(
                                 Eq.valueOf("$data.boost_info.campaign_id").equalTo("$$campaign_id")
                         )),
-                        // Simplified projection for better performance
+                        
                         Aggregation.project()
                                 .and("data.boost_info.campaign_id").as("campaignId")
                                 .and("data.statistics.sold_count").as("soldCount")
@@ -425,14 +425,14 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                                                 ToDouble.toDouble("$data.price_detail.selling_price_max")
                                         ).then(0.0)
                                 )).as("revenue"),
-                        // Group and calculate totals
+                        
                         Aggregation.group("campaignId")
                                 .sum("revenue").as("totalRevenue")
                                 .push(Document.parse("{ soldCount: '$soldCount', sellingPriceMax: '$sellingPriceMax', revenue: '$revenue' }"))
                                 .as("products"),
-                        // Unwind for individual product processing
+                        
                         Aggregation.unwind("products"),
-                        // Calculate percentage and classification in one step
+                        
                         Aggregation.project()
                                 .and("_id").as("campaignId")
                                 .and("products.soldCount").as("soldCount")
@@ -465,11 +465,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                                                         ).then("Middle Moving")
                                                         .otherwise("Slow Moving")
                                         )).as("salesClassification"),
-                        // Final match to ensure we only get the right campaign
+                        
                         Aggregation.match(Criteria.expr(
                                 Eq.valueOf("$campaignId").equalTo("$$campaign_id")
                         )),
-                        // Limit to 1 result per campaign for better performance
+                        
                         Aggregation.limit(1)
                 )
                 .as("salesClassificationData");
@@ -530,7 +530,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setBroadOrderAmount(getDouble(doc, "broadOrderAmount"));
         dto.setProductPlacement(getString(doc, "productPlacement"));
 
-        // Handle keywords efficiently
+        
         @SuppressWarnings("unchecked")
         List<Document> kwDocs = (List<Document>) doc.get("keywords");
         List<ProductKeywordResponseDto> kws = Collections.emptyList();
@@ -681,7 +681,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
     private ProductAdsResponseDto mapToProductAdsDtoWithSalesClassification(Document doc, KPI kpi) {
         ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
 
-        // Handle custom ROAS
+        
         Double customRoas = getDouble(doc, "customRoas");
         if (customRoas != null) {
             dto.setCustomRoas(customRoas);
@@ -706,7 +706,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             dto.setHasCustomRoas(false);
         }
 
-        // Handle sales classification
         @SuppressWarnings("unchecked")
         List<Document> salesClassificationDocs = (List<Document>) doc.get("salesClassificationData");
 
