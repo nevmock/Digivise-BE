@@ -38,11 +38,15 @@ public class ProductAdsController {
             @RequestParam(required = false)
             String biddingStrategy,
             @RequestParam(required = false)
-            String type
+            String type,
+            @RequestParam(required = false)
+            Long campaignId,
+            @RequestParam(required = false)
+            String title
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type));
+        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type, campaignId, title));
     }
 
     @PostMapping("/custom-roas")

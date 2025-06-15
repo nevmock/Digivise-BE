@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -59,7 +60,23 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             LocalDateTime from,
             LocalDateTime to,
             Pageable pageable,
-            String type
+            String type,
+            Long campaignId,
+            String title
+    ) {
+        return findByRangeAggTotalWithSearch(shopId, biddingStrategy, from, to, pageable, type, null, null);
+    }
+
+    // New method with search parameters
+    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotalWithSearch(
+            String shopId,
+            String biddingStrategy,
+            LocalDateTime from,
+            LocalDateTime to,
+            Pageable pageable,
+            String type,
+            Long campaignId,
+            String title
     ) {
         Merchant merchant = merchantRepository
                 .findByShopeeMerchantId(shopId)
@@ -71,8 +88,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
         long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
 
-        // Step 1: Get unique campaign IDs with count for pagination
-        List<Long> campaignIds = getUniqueCampaignIds(shopId, biddingStrategy, type, fromTimestamp, toTimestamp);
+        // Step 1: Get unique campaign IDs with count for pagination (with search filters)
+        List<Long> campaignIds = getUniqueCampaignIdsWithSearch(
+                shopId, biddingStrategy, type, fromTimestamp, toTimestamp, campaignId, title
+        );
 
         // Calculate pagination for campaigns
         int totalCampaigns = campaignIds.size();
@@ -96,6 +115,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
     private List<Long> getUniqueCampaignIds(String shopId, String biddingStrategy, String type,
                                             long fromTimestamp, long toTimestamp) {
+        return getUniqueCampaignIdsWithSearch(shopId, biddingStrategy, type, fromTimestamp, toTimestamp, null, null);
+    }
+
+    private List<Long> getUniqueCampaignIdsWithSearch(String shopId, String biddingStrategy, String type,
+                                                      long fromTimestamp, long toTimestamp, Long campaignId, String title) {
         List<AggregationOperation> ops = new ArrayList<>();
 
         // Match base criteria
@@ -106,7 +130,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         // Unwind to access entry_list
         ops.add(Aggregation.unwind("data.entry_list"));
 
-        // Apply filters
+        // Apply existing filters
         if (biddingStrategy != null) {
             ops.add(Aggregation.match(
                     Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
@@ -115,6 +139,20 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         if (type != null) {
             ops.add(Aggregation.match(
                     Criteria.where("data.entry_list.type").is(type)
+            ));
+        }
+
+        // Apply search filters
+        if (campaignId != null) {
+            ops.add(Aggregation.match(
+                    Criteria.where("data.entry_list.campaign.campaign_id").is(campaignId)
+            ));
+        }
+        if (title != null && !title.trim().isEmpty()) {
+            // Case-insensitive partial match for title
+            Pattern titlePattern = Pattern.compile(".*" + Pattern.quote(title.trim()) + ".*", Pattern.CASE_INSENSITIVE);
+            ops.add(Aggregation.match(
+                    Criteria.where("data.entry_list.title").regex(titlePattern)
             ));
         }
 
@@ -151,12 +189,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<Document> docs = results.getMappedResults();
 
-        // Convert to DTOs
         List<ProductAdsResponseDto> dtos = docs.stream()
                 .map(doc -> mapToProductAdsDtoWithSalesClassification(doc, kpi))
                 .collect(Collectors.toList());
 
-        // Group by campaign ID and create wrapper DTOs
         Map<Long, List<ProductAdsResponseDto>> grouped = dtos.stream()
                 .filter(d -> d.getCampaignId() != null)
                 .collect(Collectors.groupingBy(
@@ -182,20 +218,16 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Match with campaign IDs and other criteria
         Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTimestamp).lte(toTimestamp);
         ops.add(Aggregation.match(matchCriteria));
 
-        // Unwind entry list
         ops.add(Aggregation.unwind("data.entry_list"));
 
-        // Filter by campaign IDs first (most selective)
         ops.add(Aggregation.match(
                 Criteria.where("data.entry_list.campaign.campaign_id").in(campaignIds)
         ));
 
-        // Apply additional filters
         if (biddingStrategy != null) {
             ops.add(Aggregation.match(
                     Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
@@ -207,13 +239,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             ));
         }
 
-        // Project required fields
         ops.add(createProjectionStage(from, to));
 
-        // Add optimized keyword lookup (only for campaigns we need)
         ops.add(Aggregation.lookup()
                 .from("ProductKey")
-                .let(VariableOperators.Let.just( // Use Let.let() to define multiple variables
+                .let(VariableOperators.Let.just(
                         VariableOperators.Let.ExpressionVariable.newVariable("campaign_id").forField("campaignId"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_from").forField("shopeeFrom"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_to").forField("shopeeTo")
@@ -229,7 +259,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 )
                 .as("keywords"));
 
-        // Add optimized sales classification lookup
         ops.add(createOptimizedSalesClassificationLookup());
 
         return ops;
@@ -540,6 +569,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
         return null;
     }
+
 
     @Override
     public boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas) {

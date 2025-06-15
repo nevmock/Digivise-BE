@@ -16,7 +16,9 @@ public interface ProductAdsService {
             LocalDateTime from,
             LocalDateTime to,
             Pageable pageable,
-            String type
+            String type,
+            Long campaignId,
+            String title
     );
 
     boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas);
