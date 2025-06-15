@@ -40,6 +40,7 @@ public class ProductAdsController {
             @RequestParam(required = false)
             String type,
             @RequestParam(required = false)
+<<<<<<< HEAD
             Long campaignId,
             @RequestParam(required = false)
             String title
@@ -47,6 +48,21 @@ public class ProductAdsController {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
         return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type, campaignId, title));
+=======
+            String state,
+            @RequestParam(required = false)
+            String productPlacement,
+            @RequestParam(required = false)
+            String salesClassification,
+            @RequestParam(required = false)
+            String title,
+            @RequestParam(required = false)
+            Boolean hasKeywords
+            ) {
+        PageRequest pageRequest = PageRequest.of(page, limit);
+
+        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type, state, productPlacement, salesClassification, title, hasKeywords));
+>>>>>>> 43663e8
     }
 
     @PostMapping("/custom-roas")
