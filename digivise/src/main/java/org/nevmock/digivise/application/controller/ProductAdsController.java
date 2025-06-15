@@ -46,11 +46,13 @@ public class ProductAdsController {
             @RequestParam(required = false)
             String salesClassification,
             @RequestParam(required = false)
-            String title
+            String title,
+            @RequestParam(required = false)
+            Boolean hasKeywords
             ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type, state, productPlacement, salesClassification, title));
+        return ResponseEntity.ok(productAdsService.findByRangeAggTotal(shopId, biddingStrategy, from, to, pageRequest, type, state, productPlacement, salesClassification, title, hasKeywords));
     }
 
     @PostMapping("/custom-roas")

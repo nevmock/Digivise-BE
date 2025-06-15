@@ -20,7 +20,8 @@ public interface ProductAdsService {
             String state,
             String productPlacement,
             String salesClassification,
-            String title
+            String title,
+            Boolean hasKeywords
     );
 
     boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas);

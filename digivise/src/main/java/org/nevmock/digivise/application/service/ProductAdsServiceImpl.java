@@ -63,7 +63,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             String state,
             String productPlacement,
             String salesClassification,
-            String title
+            String title,
+            Boolean hasKeywords
     ) {
         Merchant merchant = merchantRepository
                 .findByShopeeMerchantId(shopId)
@@ -93,7 +94,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         
         List<ProductAdsResponseWrapperDto> wrapperList = getProductAdsForCampaigns(
                 paginatedCampaignIds, shopId, biddingStrategy, type, state, productPlacement,
-                salesClassification, title, fromTimestamp, toTimestamp, from, to, kpi
+                salesClassification, title, hasKeywords, fromTimestamp, toTimestamp, from, to, kpi
         );
 
         return new PageImpl<>(wrapperList, pageable, totalCampaigns);
@@ -162,11 +163,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
     
     private List<ProductAdsResponseWrapperDto> getProductAdsForCampaigns(
             List<Long> campaignIds, String shopId, String biddingStrategy, String type,
-            String state, String productPlacement, String salesClassification, String title,
+            String state, String productPlacement, String salesClassification, String title, Boolean hasKeywords,
             long fromTimestamp, long toTimestamp, LocalDateTime from, LocalDateTime to, KPI kpi) {
 
         List<AggregationOperation> ops = buildOptimizedAggregationOps(
-                campaignIds, shopId, biddingStrategy, type, state, productPlacement, title,
+                campaignIds, shopId, biddingStrategy, type, state, productPlacement, title, hasKeywords,
                 fromTimestamp, toTimestamp, from, to
         );
 
@@ -208,28 +209,28 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .collect(Collectors.toList());
     }
 
-    
+
     private List<AggregationOperation> buildOptimizedAggregationOps(
             List<Long> campaignIds, String shopId, String biddingStrategy, String type,
-            String state, String productPlacement, String title,
+            String state, String productPlacement, String title, Boolean hasKeywords,
             long fromTimestamp, long toTimestamp, LocalDateTime from, LocalDateTime to) {
 
         List<AggregationOperation> ops = new ArrayList<>();
 
-        
+        // Match criteria
         Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTimestamp).lte(toTimestamp);
         ops.add(Aggregation.match(matchCriteria));
 
-        
+        // Unwind entry list
         ops.add(Aggregation.unwind("data.entry_list"));
 
-        
+        // Match campaign IDs
         ops.add(Aggregation.match(
                 Criteria.where("data.entry_list.campaign.campaign_id").in(campaignIds)
         ));
 
-        
+        // Apply filters
         if (biddingStrategy != null && !biddingStrategy.trim().isEmpty()) {
             ops.add(Aggregation.match(
                     Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
@@ -252,17 +253,27 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
         if (title != null && !title.trim().isEmpty()) {
             ops.add(Aggregation.match(
-                    Criteria.where("data.entry_list.title").regex(title, "i") 
+                    Criteria.where("data.entry_list.title").regex(title, "i")
             ));
         }
 
-        
+        if (hasKeywords != null) {
+            if (hasKeywords) {
+                // hanya yang keywords tidak kosong
+                ops.add(Aggregation.match(Criteria.where("keywords.0").exists(true)));
+            } else {
+                // hanya yang keywords kosong
+                ops.add(Aggregation.match(Criteria.where("keywords.0").exists(false)));
+            }
+        }
+
+        // Project stage
         ops.add(createProjectionStage(from, to));
 
-        
+        // PERBAIKAN: Ganti "ProductKey" menjadi "ProductKeyword"
         ops.add(Aggregation.lookup()
-                .from("ProductKey")
-                .let(VariableOperators.Let.just( 
+                .from("ProductKeyword")  // <- Ini yang diubah
+                .let(VariableOperators.Let.just(
                         VariableOperators.Let.ExpressionVariable.newVariable("campaign_id").forField("campaignId"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_from").forField("shopeeFrom"),
                         VariableOperators.Let.ExpressionVariable.newVariable("shopee_to").forField("shopeeTo")
@@ -278,11 +289,12 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 )
                 .as("keywords"));
 
-        
+        // Sales classification lookup
         ops.add(createOptimizedSalesClassificationLookup());
 
         return ops;
     }
+
     private List<AggregationOperation> buildOptimizedAggregationOps(
             List<Long> campaignIds, String shopId, String biddingStrategy, String type,
             long fromTimestamp, long toTimestamp, LocalDateTime from, LocalDateTime to) {
