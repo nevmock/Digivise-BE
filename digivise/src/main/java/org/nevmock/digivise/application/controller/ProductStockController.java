@@ -49,10 +49,16 @@ public class ProductStockController {
     public ResponseEntity<Page<ProductStockResponseDto>> getProductStockByShop(
             @RequestParam String shopId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
-        return ResponseEntity.ok(productStockService.findByShopId(shopId, pageRequest));
+        return ResponseEntity.ok(productStockService.findByShopId(shopId, from, to, pageRequest));
     }
 }
 

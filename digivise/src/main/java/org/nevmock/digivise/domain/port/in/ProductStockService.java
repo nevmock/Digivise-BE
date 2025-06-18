@@ -18,6 +18,8 @@ public interface ProductStockService {
 
     Page<ProductStockResponseDto> findByShopId(
             String shopId,
+            LocalDateTime from,
+            LocalDateTime to,
             Pageable pageable
     );
 }

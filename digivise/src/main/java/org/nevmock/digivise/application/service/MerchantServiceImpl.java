@@ -13,6 +13,10 @@ import org.nevmock.digivise.domain.port.out.MerchantRepository;
 import org.nevmock.digivise.domain.port.out.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,7 +43,6 @@ public class MerchantServiceImpl implements MerchantService {
         newMerchant.setMerchantName(merchant.getMerchantName());
         newMerchant.setUser(user);
         newMerchant.setMerchantShopeeId(merchant.getMerchantShopeeId());
-        newMerchant.setSessionPath(merchant.getSessionPath());
         newMerchant.setCreatedAt(new Timestamp(System.currentTimeMillis()));
         newMerchant.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
 
@@ -118,7 +121,6 @@ public class MerchantServiceImpl implements MerchantService {
         Merchant merchantToUpdate = existingMerchant.get();
 
         merchantToUpdate.setMerchantName(updatedMerchant.getMerchantName());
-        merchantToUpdate.setSessionPath(updatedMerchant.getSessionPath());
         merchantToUpdate.setUser(Objects.requireNonNull(getCurrentUser(userRepository))
                 .orElseThrow(() -> new RuntimeException("User not found!")));
         merchantToUpdate.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
@@ -173,5 +175,32 @@ public class MerchantServiceImpl implements MerchantService {
                     kpiResp
                 ).build();
 
+    }
+
+    @Override
+    public Boolean loginMerchant(String username, String password) {
+
+        HttpClient httpClient = HttpClient.newHttpClient();
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create("http://103.150.116.30:35577/api/v1/shopee-seller/login"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        String.format("{\"username\":\"%s\", \"password\":\"%s\"}", username, password)))
+                .build();
+
+        HttpResponse.BodyHandler<String> bodyHandler = HttpResponse.BodyHandlers.ofString();
+
+        try {
+            HttpResponse<String> response = httpClient.send(
+                    httpRequest,
+                    bodyHandler
+            );
+
+            return response.statusCode() == 200;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to login merchant: " + e.getMessage(), e);
+        }
     }
 }

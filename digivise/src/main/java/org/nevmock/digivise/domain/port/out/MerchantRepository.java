@@ -18,4 +18,6 @@ public interface MerchantRepository {
     Optional<Merchant> findByShopeeMerchantId(String shopeeMerchantId);
 
     void deleteById(UUID merchantId);
+
+    Boolean loginMerchant(String username, String password);
 }

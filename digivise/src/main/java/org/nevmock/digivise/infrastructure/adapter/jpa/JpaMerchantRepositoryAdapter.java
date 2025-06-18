@@ -45,4 +45,9 @@ public class JpaMerchantRepositoryAdapter implements MerchantRepository {
     public void deleteById(UUID merchantId) {
         jpaRepository.deleteById(merchantId);
     }
+
+    @Override
+    public Boolean loginMerchant(String username, String password) {
+        return null;
+    }
 }

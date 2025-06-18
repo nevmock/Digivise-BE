@@ -20,4 +20,6 @@ public interface MerchantService {
     void deleteMerchant(UUID merchantId);
 
     void deleteMerchantByUserId(UUID userId);
+
+    Boolean loginMerchant(String username, String password);
 }

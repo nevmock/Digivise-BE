@@ -59,4 +59,15 @@ public class MerchantController {
         merchantService.deleteMerchantByUserId(userId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<Boolean> loginMerchant(
+            @RequestParam
+            String username,
+            @RequestParam
+            String password
+    ) {
+        Boolean merchant = merchantService.loginMerchant(username, password);
+        return ResponseEntity.ok(merchant);
+    }
 }

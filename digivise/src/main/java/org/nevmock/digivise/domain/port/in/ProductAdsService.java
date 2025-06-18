@@ -17,16 +17,11 @@ public interface ProductAdsService {
             LocalDateTime to,
             Pageable pageable,
             String type,
-<<<<<<< HEAD
-            Long campaignId,
-            String title
-=======
             String state,
             String productPlacement,
             String salesClassification,
             String title,
             Boolean hasKeywords
->>>>>>> 43663e8
     );
 
     boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas);
