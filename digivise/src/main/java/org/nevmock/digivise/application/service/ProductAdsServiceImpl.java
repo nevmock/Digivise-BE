@@ -326,7 +326,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 )
                 .as("keywords"));
 
-        // Filter berdasarkan hasKeywords
         if (hasKeywords != null) {
             if (hasKeywords) {
                 ops.add(Aggregation.match(Criteria.where("keywords.0").exists(true)));
@@ -349,11 +348,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         return ops;
     }
 
-    // TAMBAHKAN: Method untuk debug lookup
     private void debugKeywordLookup(String shopId, long fromTimestamp, long toTimestamp) {
         System.out.println("=== DEBUG KEYWORD LOOKUP ===");
 
-        // Check ProductKey collection
         Query keyQuery = new Query();
         keyQuery.addCriteria(
                 Criteria.where("from").is(fromTimestamp)
@@ -369,7 +366,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                     ", Shop ID: " + doc.get("shop_id"));
         });
 
-        // Check ProductAds after unwind
         List<AggregationOperation> debugOps = Arrays.asList(
                 Aggregation.match(Criteria.where("shop_id").is(shopId)
                         .and("from").gte(fromTimestamp).lte(toTimestamp)),
@@ -394,7 +390,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         });
     }
 
-    // TAMBAHKAN: Test lookup secara terpisah
     private void testKeywordLookup(List<Long> campaignIds, long fromTimestamp, long toTimestamp) {
         List<AggregationOperation> testOps = Arrays.asList(
                 Aggregation.match(Criteria.where("shop_id").regex(".*")
@@ -440,84 +435,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                     ", Keyword Count: " + doc.get("keywordCount"));
         });
     }
-
-//    private List<AggregationOperation> buildOptimizedAggregationOps(
-//            List<Long> campaignIds, String shopId, String biddingStrategy, String type,
-//            String state, String productPlacement, String title, Boolean hasKeywords,
-//            long fromTimestamp, long toTimestamp, LocalDateTime from, LocalDateTime to) {
-//
-//        List<AggregationOperation> ops = new ArrayList<>();
-//
-//        Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
-//                .and("from").gte(fromTimestamp).lte(toTimestamp);
-//        ops.add(Aggregation.match(matchCriteria));
-//
-//        ops.add(Aggregation.unwind("data.entry_list"));
-//
-//        ops.add(Aggregation.match(
-//                Criteria.where("data.entry_list.campaign.campaign_id").in(campaignIds)
-//        ));
-//
-//        // Apply filters
-//        if (biddingStrategy != null && !biddingStrategy.trim().isEmpty()) {
-//            ops.add(Aggregation.match(
-//                    Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
-//            ));
-//        }
-//        if (type != null && !type.trim().isEmpty()) {
-//            ops.add(Aggregation.match(
-//                    Criteria.where("data.entry_list.type").is(type)
-//            ));
-//        }
-//        if (state != null && !state.trim().isEmpty()) {
-//            ops.add(Aggregation.match(
-//                    Criteria.where("data.entry_list.state").is(state)
-//            ));
-//        }
-//        if (productPlacement != null && !productPlacement.trim().isEmpty()) {
-//            ops.add(Aggregation.match(
-//                    Criteria.where("data.entry_list.manual_product_ads.product_placement").is(productPlacement)
-//            ));
-//        }
-//        if (title != null && !title.trim().isEmpty()) {
-//            ops.add(Aggregation.match(
-//                    Criteria.where("data.entry_list.title").regex(title, "i")
-//            ));
-//        }
-//
-//        ops.add(createProjectionStage(from, to));
-//
-//        // Lookup ProductKey berdasarkan campaign_id dan exact from/to timestamps
-//        ops.add(Aggregation.lookup()
-//                .from("ProductKey")
-//                .let(VariableOperators.Let.just(
-//                        VariableOperators.Let.ExpressionVariable.newVariable("campaign_id").forField("campaignId"),
-//                        VariableOperators.Let.ExpressionVariable.newVariable("from_ts").forField("from"),
-//                        VariableOperators.Let.ExpressionVariable.newVariable("to_ts").forField("to")
-//                ))
-//                .pipeline(
-//                        Aggregation.match(Criteria.expr(
-//                                BooleanOperators.And.and(
-//                                        Eq.valueOf("$campaign_id").equalTo("$campaign_id"),
-//                                        Eq.valueOf("$from").equalTo("$from_ts"),
-//                                        Eq.valueOf("$to").equalTo("$to_ts")
-//                                )
-//                        ))
-//                )
-//                .as("keywords"));
-//
-//        if (hasKeywords != null) {
-//            if (hasKeywords) {
-//                ops.add(Aggregation.match(Criteria.where("keywords.0").exists(true)));
-//            } else {
-//                ops.add(Aggregation.match(Criteria.where("keywords.0").exists(false)));
-//            }
-//        }
-//
-//        ops.add(createOptimizedSalesClassificationLookup());
-//
-//        return ops;
-//    }
 
     private ProjectionOperation createProjectionStage(LocalDateTime from, LocalDateTime to) {
         return Aggregation.project()

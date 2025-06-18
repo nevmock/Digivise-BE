@@ -29,23 +29,18 @@ public class ProductStockServiceImpl implements ProductStockService {
             LocalDateTime to,
             Pageable pageable) {
 
-        // 1. Build criteria dengan filter createdAt
         Criteria criteria = Criteria.where("shop_id").is(shopId);
-        if (from != null) {
-            long fromEpoch = from.atZone(ZoneId.systemDefault()).toEpochSecond();
-            criteria.and("createdAt").gte(fromEpoch);
-        }
-        if (to != null) {
-            long toEpoch = to.atZone(ZoneId.systemDefault()).toEpochSecond();
-            criteria.and("createdAt").lte(toEpoch);
+        if (from != null || to != null) {
+            Criteria dateRange = Criteria.where("createdAt");
+            if (from != null) dateRange.gte(from);
+            if (to   != null) dateRange.lte(to);
+            criteria.andOperator(dateRange);
         }
 
-        // 2. Base operations (match + unwind)
         List<AggregationOperation> baseOperations = new ArrayList<>();
         baseOperations.add(Aggregation.match(criteria));
         baseOperations.add(Aggregation.unwind("data"));
 
-        // 3. Project operation
         ProjectionOperation projectOperation = Aggregation.project()
                 .and("$_id").as("id")
                 .and("$uuid").as("uuid")
@@ -101,7 +96,6 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .and("data.appeal_info.ipr_appeal_info.reference_id").as("referenceId")
                 .and("data.appeal_info.ipr_appeal_info.appeal_status").as("appealStatus");
 
-        // 4. Main aggregation (data fetching)
         List<AggregationOperation> mainOperations = new ArrayList<>(baseOperations);
         mainOperations.add(projectOperation);
         mainOperations.add(Aggregation.skip((long) pageable.getPageNumber() * pageable.getPageSize()));
@@ -109,11 +103,9 @@ public class ProductStockServiceImpl implements ProductStockService {
 
         Aggregation aggregation = Aggregation.newAggregation(mainOperations);
 
-        // 5. Count aggregation
         List<AggregationOperation> countOperations = new ArrayList<>(baseOperations);
         countOperations.add(Aggregation.count().as("total"));
 
-        // 6. Execute queries
         List<ProductStockResponseDto> results = mongoTemplate
                 .aggregate(aggregation, "ProductStock", ProductStockResponseDto.class)
                 .getMappedResults();
