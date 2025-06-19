@@ -36,6 +36,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             String shopId,
             LocalDateTime from,
             LocalDateTime to,
+            String name,
             Pageable pageable
     ) {
         List<AggregationOperation> ops = new ArrayList<>();
@@ -46,6 +47,12 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         ));
 
         ops.add(Aggregation.unwind("data"));
+
+        if (name != null && !name.trim().isEmpty()) {
+            Criteria nameFilter = Criteria.where("data.name")
+                    .regex(".*" + name.trim() + ".*", "i"); // Case-insensitive partial match
+            ops.add(Aggregation.match(nameFilter));
+        }
 
         ops.add(Aggregation.project()
                 .and("data.id").as("productId")

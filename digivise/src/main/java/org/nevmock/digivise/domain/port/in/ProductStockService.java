@@ -20,6 +20,7 @@ public interface ProductStockService {
             String shopId,
             LocalDateTime from,
             LocalDateTime to,
+            String name,
             Pageable pageable
     );
 }

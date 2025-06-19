@@ -31,6 +31,8 @@ public class ProductPerformanceController {
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime to,
+            @RequestParam(required = false)
+            String name,
             @RequestParam(defaultValue = "0")
             int page,
             @RequestParam(defaultValue = "10")
@@ -38,6 +40,6 @@ public class ProductPerformanceController {
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productPerformanceService.findByRange(shopId, from, to, pageRequest));
+        return ResponseEntity.ok(productPerformanceService.findByRange(shopId, from, to, name, pageRequest));
     }
 }

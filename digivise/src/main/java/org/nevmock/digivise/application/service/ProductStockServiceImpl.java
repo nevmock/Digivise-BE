@@ -159,6 +159,7 @@ public class ProductStockServiceImpl implements ProductStockService {
             String shopId,
             LocalDateTime from,
             LocalDateTime to,
+            String name,
             Pageable pageable
     ) {
         Criteria criteria = Criteria.where("shop_id").is(shopId);
@@ -172,6 +173,12 @@ public class ProductStockServiceImpl implements ProductStockService {
         List<AggregationOperation> ops = new ArrayList<>();
         ops.add(Aggregation.match(criteria));
         ops.add(Aggregation.unwind("data"));
+
+        if (name != null && !name.trim().isEmpty()) {
+            Criteria nameFilter = Criteria.where("data.name")
+                    .regex(".*" + name.trim() + ".*", "i"); // Case-insensitive partial match
+            ops.add(Aggregation.match(nameFilter));
+        }
 
         ProjectionOperation projectOperation = Aggregation.project()
                 .and("$_id").as("id")

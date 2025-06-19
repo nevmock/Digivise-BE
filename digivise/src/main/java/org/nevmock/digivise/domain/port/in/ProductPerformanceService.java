@@ -11,6 +11,7 @@ public interface ProductPerformanceService {
             String shopId,
             LocalDateTime from,
             LocalDateTime to,
+            String name,
             Pageable pageable
     );
 }
