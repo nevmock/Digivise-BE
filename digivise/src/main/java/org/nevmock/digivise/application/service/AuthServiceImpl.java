@@ -56,7 +56,6 @@ public class AuthServiceImpl implements AuthService {
                         .id(merchant.getId())
                         .merchantName(merchant.getMerchantName())
                         .merchantShopeeId(merchant.getMerchantShopeeId())
-                        .sessionPath(merchant.getSessionPath())
                         .userId(user.getId())
                         .createdAt(merchant.getCreatedAt())
                         .updatedAt(merchant.getUpdatedAt())

@@ -27,11 +27,8 @@ public class Merchant {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "merchant_name", nullable = false, length = 255)
+    @Column(name = "merchant_name", nullable = true, length = 255)
     private String merchantName;
-
-    @Column(name = "session_path", nullable = false, length = 255)
-    private String sessionPath;
 
     @OneToMany(mappedBy = "merchant", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<KPI> kpis;
@@ -42,9 +39,9 @@ public class Merchant {
     @Column(name = "updated_at")
     private Timestamp updatedAt;
 
-    @Column(name = "username", nullable = true, length = 255)
+    @Column(name = "username", nullable = false, length = 255)
     private String username;
 
-    @Column(name = "password", nullable = true, length = 255)
+    @Column(name = "password", nullable = false, length = 255)
     private String password;
 }

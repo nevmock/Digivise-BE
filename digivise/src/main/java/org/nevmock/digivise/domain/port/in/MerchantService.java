@@ -1,5 +1,6 @@
 package org.nevmock.digivise.domain.port.in;
 
+import org.nevmock.digivise.application.dto.merchant.MerchantInfoResponseDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantRequestDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 
@@ -22,4 +23,6 @@ public interface MerchantService {
     void deleteMerchantByUserId(UUID userId);
 
     Boolean loginMerchant(String username, String password);
+
+    MerchantInfoResponseDto otpLoginMerchant(String username, String otpCode);
 }

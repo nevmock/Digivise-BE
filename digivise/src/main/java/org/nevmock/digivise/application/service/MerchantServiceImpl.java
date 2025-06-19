@@ -1,7 +1,10 @@
 package org.nevmock.digivise.application.service;
 
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.*;
 import org.nevmock.digivise.application.dto.kpi.KPIResponseDto;
+import org.nevmock.digivise.application.dto.merchant.MerchantInfoResponseDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantRequestDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 import org.nevmock.digivise.domain.model.KPI;
@@ -11,8 +14,10 @@ import org.nevmock.digivise.domain.port.in.MerchantService;
 import org.nevmock.digivise.domain.port.out.KPIRepository;
 import org.nevmock.digivise.domain.port.out.MerchantRepository;
 import org.nevmock.digivise.domain.port.out.UserRepository;
+import org.nevmock.digivise.infrastructure.adapter.security.PasswordEncryptor;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -30,6 +35,8 @@ public class MerchantServiceImpl implements MerchantService {
     private final MerchantRepository merchantRepository;
     private final UserRepository userRepository;
     private final KPIRepository kpiRepository;
+
+    private String password;
 
     @Override
     public MerchantResponseDto createMerchant(MerchantRequestDto merchant) {
@@ -167,7 +174,6 @@ public class MerchantServiceImpl implements MerchantService {
         return MerchantResponseDto.builder()
                 .id(merchant.getId())
                 .merchantName(merchant.getMerchantName())
-                .sessionPath(merchant.getSessionPath())
                 .merchantShopeeId(merchant.getMerchantShopeeId())
                 .createdAt(merchant.getCreatedAt())
                 .userId(merchant.getUser().getId())
@@ -179,28 +185,105 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     public Boolean loginMerchant(String email, String password) {
-
         HttpClient httpClient = HttpClient.newHttpClient();
+
+        String jsonBody = String.format(
+                "{\"email\":\"%s\",\"password\":\"%s\"}",
+                email,
+                password
+        );
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create("http://103.150.116.30:1337/api/v1/shopee-seller/login"))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(
-                        String.format("{\"email\":\"%s\", \"password\":\"%s\"}", email, password)))
+                .method("GET", HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
-
-        HttpResponse.BodyHandler<String> bodyHandler = HttpResponse.BodyHandlers.ofString();
 
         try {
             HttpResponse<String> response = httpClient.send(
                     httpRequest,
-                    bodyHandler
+                    HttpResponse.BodyHandlers.ofString()
+            );
+
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to login merchant: " + response.body());
+            }
+
+            this.password = PasswordEncryptor.INSTANCE.encrypt(
+                    password
             );
 
             return response.statusCode() == 200;
 
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Failed to login merchant", e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to login merchant: " + e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public MerchantInfoResponseDto otpLoginMerchant(String username, String otpCode) {
+
+        User user = Objects.requireNonNull(getCurrentUser(userRepository))
+                .orElseThrow(() -> new RuntimeException("User not found!"));
+
+        HttpClient httpClient = HttpClient.newHttpClient();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String jsonBody = String.format("{\"username\":\"%s\",\"otp\":\"%s\"}", username, otpCode);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://103.150.116.30:1337/api/v1/shopee-seller/otp-email"))
+                .header("Content-Type", "application/json")
+                .method("GET", HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to OTP-login merchant: " + response.body());
+            }
+
+            MerchantInfoResponseDto result = objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
+
+            Merchant merchant = new Merchant();
+
+            merchant.setId(UUID.randomUUID());
+            merchant.setMerchantName(result.getData().getData().getName());
+            merchant.setMerchantShopeeId(String.valueOf(result.getData().getData().getShopId()));
+            merchant.setUser(user);
+            merchant.setCreatedAt(new Timestamp(System.currentTimeMillis()));
+            merchant.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+            merchant.setUsername(username);
+            merchant.setPassword(this.password);
+
+            KPI kpi = KPI
+                    .builder()
+                    .user(user)
+                    .merchant(merchant)
+                    .maxAcos(0.0)
+                    .maxCpc(0.0)
+                    .maxAdjustment(0.0)
+                    .multiplier(0.0)
+                    .minBidSearch(0.0)
+                    .maxKlik(0.0)
+                    .minKlik(0.0)
+                    .cpcScaleFactor(0.0)
+                    .acosScaleFactor(0.0)
+                    .id(UUID.randomUUID())
+                    .minAdjustment(0.0)
+                    .minBidReco(0.0)
+                    .build();
+
+            merchantRepository.save(merchant);
+            kpiRepository.save(kpi);
+
+            return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
+
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Failed to OTP-login merchant", e);
         }
     }
 }

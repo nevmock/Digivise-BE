@@ -1,8 +1,7 @@
 package org.nevmock.digivise.application.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.nevmock.digivise.application.dto.merchant.MerchantRequestDto;
-import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
+import org.nevmock.digivise.application.dto.merchant.*;
 import org.nevmock.digivise.domain.port.in.MerchantService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -62,12 +61,19 @@ public class MerchantController {
 
     @PostMapping("/login")
     public ResponseEntity<Boolean> loginMerchant(
-            @RequestParam
-            String username,
-            @RequestParam
-            String password
+            @RequestBody
+            MerchantLoginDto merchantLoginDto
     ) {
-        Boolean merchant = merchantService.loginMerchant(username, password);
+        Boolean merchant = merchantService.loginMerchant(merchantLoginDto.getUsername(), merchantLoginDto.getPassword());
+        return ResponseEntity.ok(merchant);
+    }
+
+    @PostMapping("/otp-login")
+    public ResponseEntity<MerchantInfoResponseDto> otpLoginMerchant(
+            @RequestBody
+            MerchantOtpLoginDto merchantOtpLoginDto
+    ) {
+        MerchantInfoResponseDto merchant = merchantService.otpLoginMerchant(merchantOtpLoginDto.getUsername(), merchantOtpLoginDto.getOtp());
         return ResponseEntity.ok(merchant);
     }
 }
