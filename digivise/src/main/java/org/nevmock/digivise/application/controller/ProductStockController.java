@@ -46,7 +46,7 @@ public class ProductStockController {
 //    }
 
     @GetMapping("/by-shop")
-    public ResponseEntity<Page<ProductStockResponseDto>> getProductStockByShop(
+    public ResponseEntity<Page<ProductStockResponseWrapperDto>> getProductStockByShop(
             @RequestParam String shopId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int limit,

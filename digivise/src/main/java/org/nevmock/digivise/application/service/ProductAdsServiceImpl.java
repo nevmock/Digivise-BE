@@ -209,6 +209,145 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .collect(Collectors.toList());
     }
 
+//    private List<AggregationOperation> buildOptimizedAggregationOps(
+//            List<Long> campaignIds, String shopId, String biddingStrategy, String type,
+//            String state, String productPlacement, String title, Boolean hasKeywords,
+//            long fromTimestamp, long toTimestamp, LocalDateTime from, LocalDateTime to) {
+//
+//        List<AggregationOperation> ops = new ArrayList<>();
+//
+//        Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
+//                .and("from").gte(fromTimestamp).lte(toTimestamp);
+//        ops.add(Aggregation.match(matchCriteria));
+//
+//        ops.add(Aggregation.unwind("data.entry_list"));
+//
+//        ops.add(Aggregation.match(
+//                Criteria.where("data.entry_list.campaign.campaign_id").in(campaignIds)
+//        ));
+//
+//        if (biddingStrategy != null && !biddingStrategy.trim().isEmpty()) {
+//            ops.add(Aggregation.match(
+//                    Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)
+//            ));
+//        }
+//        if (type != null && !type.trim().isEmpty()) {
+//            ops.add(Aggregation.match(
+//                    Criteria.where("data.entry_list.type").is(type)
+//            ));
+//        }
+//        if (state != null && !state.trim().isEmpty()) {
+//            ops.add(Aggregation.match(
+//                    Criteria.where("data.entry_list.state").is(state)
+//            ));
+//        }
+//        if (productPlacement != null && !productPlacement.trim().isEmpty()) {
+//            ops.add(Aggregation.match(
+//                    Criteria.where("data.entry_list.manual_product_ads.product_placement").is(productPlacement)
+//            ));
+//        }
+//        if (title != null && !title.trim().isEmpty()) {
+//            ops.add(Aggregation.match(
+//                    Criteria.where("data.entry_list.title").regex(title, "i")
+//            ));
+//        }
+//
+//        ops.add(Aggregation.project()
+//                .and("_id").as("id")
+//                .and("shop_id").as("shopId")
+//                .and("createdAt").as("createdAt")
+//                .and("data.entry_list.campaign.campaign_id").as("campaignId")
+//                .and("data.entry_list.title").as("title")
+//                .and("data.entry_list.image").as("image")
+//                .and("data.entry_list.state").as("state")
+//                .and("data.entry_list.campaign.daily_budget").as("dailyBudget")
+//                .and("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
+//                .and("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
+//                .and("data.entry_list.report.cpc").as("cpc")
+//                .and("data.entry_list.report.broad_cir").as("acos")
+//                .and("data.entry_list.report.click").as("click")
+//                .and("data.entry_list.report.ctr").as("ctr")
+//                .and("data.entry_list.report.impression").as("impression")
+//                .and("data.entry_list.report.broad_roi").as("broadRoi")
+//                .and("data.entry_list.report.broad_order").as("broadOrder")
+//                .and("data.entry_list.report.broad_order_amount").as("broadOrderAmount")
+//                .and("data.entry_list.report.broad_gmv").as("broadGmv")
+//                .and("data.entry_list.report.direct_order").as("directOrder")
+//                .and("data.entry_list.report.direct_order_amount").as("directOrderAmount")
+//                .and("data.entry_list.report.direct_gmv").as("directGmv")
+//                .and("data.entry_list.report.direct_roi").as("directRoi")
+//                .and("data.entry_list.report.direct_cir").as("directCir")
+//                .and("data.entry_list.report.direct_cr").as("directCr")
+//                .and("data.entry_list.report.cost").as("cost")
+//                .and("data.entry_list.report.cpdc").as("cpdc")
+//                .and("data.entry_list.ratio.broad_cir").as("acosRatio")
+//                .and("data.entry_list.ratio.cpc").as("cpcRatio")
+//                .and("data.entry_list.ratio.click").as("clickRatio")
+//                .and("data.entry_list.ratio.ctr").as("ctrRatio")
+//                .and("data.entry_list.ratio.impression").as("impressionRatio")
+//                .and("data.entry_list.ratio.cost").as("costRatio")
+//                .and("data.entry_list.ratio.broad_gmv").as("broadGmvRatio")
+//                .and("data.entry_list.ratio.broad_order").as("broadOrderRatio")
+//                .and("data.entry_list.ratio.checkout").as("checkoutRatio")
+//                .and("data.entry_list.ratio.direct_order").as("directOrderRatio")
+//                .and("data.entry_list.ratio.direct_order_amount").as("directOrderAmountRatio")
+//                .and("data.entry_list.ratio.direct_gmv").as("directGmvRatio")
+//                .and("data.entry_list.ratio.direct_roi").as("directRoiRatio")
+//                .and("data.entry_list.ratio.direct_cir").as("directCirRatio")
+//                .and("data.entry_list.ratio.direct_cr").as("directCrRatio")
+//                .and("data.entry_list.ratio.cpdc").as("cpdcRatio")
+//                .and("data.entry_list.ratio.broad_roi").as("broadRoiRatio")
+//                .and("data.entry_list.ratio.cr").as("crRatio")
+//                .and("data.entry_list.report.cr").as("cr")
+//                .and("data.entry_list.ratio.broad_order_amount").as("broadOrderAmountRatio")
+//                .and("data.entry_list.type").as("type")
+//                .and("from").as("shopeeFrom")
+//                .and("to").as("shopeeTo")
+//                .and("data.entry_list.custom_roas").as("customRoas")
+//                .andExpression("{$literal: '" + from.toString() + "'}").as("from")
+//                .andExpression("{$literal: '" + to.toString() + "'}").as("to")
+//        );
+//
+//        ops.add(Aggregation.lookup()
+//                .from("ProductKey")
+//                .let(VariableOperators.Let.just(
+//                        VariableOperators.Let.ExpressionVariable.newVariable("campaign_id").forField("campaignId"),
+//                        VariableOperators.Let.ExpressionVariable.newVariable("from_ts").forField("shopeeFrom"),
+//                        VariableOperators.Let.ExpressionVariable.newVariable("to_ts").forField("shopeeTo")
+//                ))
+//                .pipeline(
+//                        Aggregation.match(Criteria.expr(
+//                                BooleanOperators.And.and(
+//                                        Eq.valueOf("$campaign_id").equalTo("$$campaign_id"),
+//                                        Eq.valueOf("$from").equalTo("$$from_ts"),
+//                                        Eq.valueOf("$to").equalTo("$$to_ts")
+//                                )
+//                        ))
+//                )
+//                .as("keywords"));
+//
+//        if (hasKeywords != null) {
+//            if (hasKeywords) {
+//                ops.add(Aggregation.match(Criteria.where("keywords.0").exists(true)));
+//            } else {
+//                ops.add(Aggregation.match(Criteria.where("keywords.0").exists(false)));
+//            }
+//        }
+//
+//        ops.add(createOptimizedSalesClassificationLookup());
+//
+//
+//        debugKeywordLookup(
+//                shopId, fromTimestamp, toTimestamp
+//        );
+//
+//        testKeywordLookup(
+//                campaignIds, fromTimestamp, toTimestamp
+//        );
+//
+//        return ops;
+//    }
+
     private List<AggregationOperation> buildOptimizedAggregationOps(
             List<Long> campaignIds, String shopId, String biddingStrategy, String type,
             String state, String productPlacement, String title, Boolean hasKeywords,
@@ -308,6 +447,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to")
         );
 
+        // Keyword lookup
         ops.add(Aggregation.lookup()
                 .from("ProductKey")
                 .let(VariableOperators.Let.just(
@@ -334,19 +474,16 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             }
         }
 
+        // Sales classification lookup - sekarang menggunakan createdAt range matching
         ops.add(createOptimizedSalesClassificationLookup());
 
-
-        debugKeywordLookup(
-                shopId, fromTimestamp, toTimestamp
-        );
-
-        testKeywordLookup(
-                campaignIds, fromTimestamp, toTimestamp
-        );
+        // Remove debug methods as they're not needed in production
+        // debugKeywordLookup(shopId, fromTimestamp, toTimestamp);
+        // testKeywordLookup(campaignIds, fromTimestamp, toTimestamp);
 
         return ops;
     }
+
 
     private void debugKeywordLookup(String shopId, long fromTimestamp, long toTimestamp) {
         System.out.println("=== DEBUG KEYWORD LOOKUP ===");
@@ -493,81 +630,177 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .andExpression("{$literal: '" + to.toString() + "'}").as("to");
     }
 
-    private LookupOperation createOptimizedSalesClassificationLookup() {
-        return Aggregation.lookup()
-                .from("ProductStock")
-                .let(VariableOperators.Let.ExpressionVariable
-                        .newVariable("campaign_id").forField("campaignId"))
-                .pipeline(
+//    private LookupOperation createOptimizedSalesClassificationLookup() {
+//        return Aggregation.lookup()
+//                .from("ProductStock")
+//                .let(VariableOperators.Let.ExpressionVariable
+//                        .newVariable("campaign_id").forField("campaignId"))
+//                .pipeline(
+//
+//                        Aggregation.match(Criteria.expr(
+//                                Eq.valueOf("$data.boost_info.campaign_id").equalTo("$$campaign_id")
+//                        )),
+//                        Aggregation.unwind("data"),
+//                        Aggregation.match(Criteria.expr(
+//                                Eq.valueOf("$data.boost_info.campaign_id").equalTo("$$campaign_id")
+//                        )),
+//
+//                        Aggregation.project()
+//                                .and("data.boost_info.campaign_id").as("campaignId")
+//                                .and("data.statistics.sold_count").as("soldCount")
+//                                .and("data.price_detail.selling_price_max").as("sellingPriceMax")
+//                                .and(Multiply.valueOf(
+//                                        IfNull.ifNull("$data.statistics.sold_count").then(0)
+//                                ).multiplyBy(
+//                                        IfNull.ifNull(
+//                                                ToDouble.toDouble("$data.price_detail.selling_price_max")
+//                                        ).then(0.0)
+//                                )).as("revenue"),
+//
+//                        Aggregation.group("campaignId")
+//                                .sum("revenue").as("totalRevenue")
+//                                .push(Document.parse("{ soldCount: '$soldCount', sellingPriceMax: '$sellingPriceMax', revenue: '$revenue' }"))
+//                                .as("products"),
+//
+//                        Aggregation.unwind("products"),
+//
+//                        Aggregation.project()
+//                                .and("_id").as("campaignId")
+//                                .and("products.soldCount").as("soldCount")
+//                                .and("products.sellingPriceMax").as("sellingPriceMax")
+//                                .and("products.revenue").as("revenue")
+//                                .and("totalRevenue").as("totalRevenue")
+//                                .and(Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
+//                                        .then(Multiply.valueOf(
+//                                                Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+//                                        ).multiplyBy(100))
+//                                        .otherwise(0)).as("revenuePercentage")
+//                                .and(Cond.when(
+//                                                Gte.valueOf(
+//                                                        Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
+//                                                                .then(Multiply.valueOf(
+//                                                                        Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+//                                                                ).multiplyBy(100))
+//                                                                .otherwise(0)
+//                                                ).greaterThanEqualToValue(90)
+//                                        ).then("Best Seller")
+//                                        .otherwise(
+//                                                Cond.when(
+//                                                                Gte.valueOf(
+//                                                                        Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
+//                                                                                .then(Multiply.valueOf(
+//                                                                                        Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+//                                                                                ).multiplyBy(100))
+//                                                                                .otherwise(0)
+//                                                                ).greaterThanEqualToValue(70)
+//                                                        ).then("Middle Moving")
+//                                                        .otherwise("Slow Moving")
+//                                        )).as("salesClassification"),
+//
+//                        Aggregation.match(Criteria.expr(
+//                                Eq.valueOf("$campaignId").equalTo("$$campaign_id")
+//                        )),
+//
+//                        Aggregation.limit(1)
+//                )
+//                .as("salesClassificationData");
+//    }
+private LookupOperation createOptimizedSalesClassificationLookup() {
+    return Aggregation.lookup()
+            .from("ProductStock")
+            .let(VariableOperators.Let.just(
+                    VariableOperators.Let.ExpressionVariable.newVariable("campaign_id").forField("campaignId"),
+                    VariableOperators.Let.ExpressionVariable.newVariable("from_date").forField("from"),
+                    VariableOperators.Let.ExpressionVariable.newVariable("to_date").forField("to")
+            ))
+            .pipeline(
+                    // Match documents where createdAt is within the date range
+                    Aggregation.match(Criteria.expr(
+                            BooleanOperators.And.and(
+                                    // Check if createdAt is within from-to range
+                                    Gte.valueOf("$createdAt").greaterThanEqualToValue("$$from_date"),
+                                    Lte.valueOf("$createdAt").lessThanEqualToValue("$$to_date")
+                            )
+                    )),
 
-                        Aggregation.match(Criteria.expr(
-                                Eq.valueOf("$data.boost_info.campaign_id").equalTo("$$campaign_id")
-                        )),
-                        Aggregation.unwind("data"),
-                        Aggregation.match(Criteria.expr(
-                                Eq.valueOf("$data.boost_info.campaign_id").equalTo("$$campaign_id")
-                        )),
+                    // Unwind the data array to process each product individually
+                    Aggregation.unwind("data"),
 
-                        Aggregation.project()
-                                .and("data.boost_info.campaign_id").as("campaignId")
-                                .and("data.statistics.sold_count").as("soldCount")
-                                .and("data.price_detail.selling_price_max").as("sellingPriceMax")
-                                .and(Multiply.valueOf(
-                                        IfNull.ifNull("$data.statistics.sold_count").then(0)
-                                ).multiplyBy(
-                                        IfNull.ifNull(
-                                                ToDouble.toDouble("$data.price_detail.selling_price_max")
-                                        ).then(0.0)
-                                )).as("revenue"),
+                    // Match products that have boost_info with matching campaign_id
+                    Aggregation.match(
+                            new Criteria().andOperator(
+                                    Criteria.where("data.boost_info").ne(null),
+                                    Criteria.where("data.boost_info.campaign_id").is("$$campaign_id")
+                            )
+                    ),
 
-                        Aggregation.group("campaignId")
-                                .sum("revenue").as("totalRevenue")
-                                .push(Document.parse("{ soldCount: '$soldCount', sellingPriceMax: '$sellingPriceMax', revenue: '$revenue' }"))
-                                .as("products"),
+                    // Project necessary fields and calculate revenue
+                    Aggregation.project()
+                            .and("data.boost_info.campaign_id").as("campaignId")
+                            .and("data.statistics.sold_count").as("soldCount")
+                            .and("data.price_detail.selling_price_max").as("sellingPriceMax")
+                            .and(Multiply.valueOf(
+                                    IfNull.ifNull("$data.statistics.sold_count").then(0)
+                            ).multiplyBy(
+                                    Divide.valueOf(
+                                            IfNull.ifNull(
+                                                    ToDouble.toDouble("$data.price_detail.selling_price_max")
+                                            ).then(0.0)
+                                    ).divideBy(100000) // Convert from smallest unit
+                            )).as("revenue"),
 
-                        Aggregation.unwind("products"),
+                    // Group by campaign to calculate total revenue
+                    Aggregation.group("campaignId")
+                            .sum("revenue").as("totalRevenue")
+                            .push(Document.parse("{ soldCount: '$soldCount', sellingPriceMax: '$sellingPriceMax', revenue: '$revenue' }"))
+                            .as("products"),
 
-                        Aggregation.project()
-                                .and("_id").as("campaignId")
-                                .and("products.soldCount").as("soldCount")
-                                .and("products.sellingPriceMax").as("sellingPriceMax")
-                                .and("products.revenue").as("revenue")
-                                .and("totalRevenue").as("totalRevenue")
-                                .and(Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
-                                        .then(Multiply.valueOf(
-                                                Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
-                                        ).multiplyBy(100))
-                                        .otherwise(0)).as("revenuePercentage")
-                                .and(Cond.when(
-                                                Gte.valueOf(
-                                                        Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
-                                                                .then(Multiply.valueOf(
-                                                                        Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
-                                                                ).multiplyBy(100))
-                                                                .otherwise(0)
-                                                ).greaterThanEqualToValue(90)
-                                        ).then("Best Seller")
-                                        .otherwise(
-                                                Cond.when(
-                                                                Gte.valueOf(
-                                                                        Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
-                                                                                .then(Multiply.valueOf(
-                                                                                        Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
-                                                                                ).multiplyBy(100))
-                                                                                .otherwise(0)
-                                                                ).greaterThanEqualToValue(70)
-                                                        ).then("Middle Moving")
-                                                        .otherwise("Slow Moving")
-                                        )).as("salesClassification"),
+                    // Unwind products to calculate individual percentages
+                    Aggregation.unwind("products"),
 
-                        Aggregation.match(Criteria.expr(
-                                Eq.valueOf("$campaignId").equalTo("$$campaign_id")
-                        )),
+                    // Project final fields with sales classification logic
+                    Aggregation.project()
+                            .and("_id").as("campaignId")
+                            .and("products.soldCount").as("soldCount")
+                            .and("products.sellingPriceMax").as("sellingPriceMax")
+                            .and("products.revenue").as("revenue")
+                            .and("totalRevenue").as("totalRevenue")
+                            .and(Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
+                                    .then(Multiply.valueOf(
+                                            Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+                                    ).multiplyBy(100))
+                                    .otherwise(0)).as("revenuePercentage")
+                            .and(Cond.when(
+                                            Gte.valueOf(
+                                                    Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
+                                                            .then(Multiply.valueOf(
+                                                                    Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+                                                            ).multiplyBy(100))
+                                                            .otherwise(0)
+                                            ).greaterThanEqualToValue(90)
+                                    ).then("Best Seller")
+                                    .otherwise(
+                                            Cond.when(
+                                                            Gte.valueOf(
+                                                                    Cond.when(Gt.valueOf("$totalRevenue").greaterThanValue(0))
+                                                                            .then(Multiply.valueOf(
+                                                                                    Divide.valueOf("$products.revenue").divideBy("$totalRevenue")
+                                                                            ).multiplyBy(100))
+                                                                            .otherwise(0)
+                                                            ).greaterThanEqualToValue(70)
+                                                    ).then("Middle Moving")
+                                                    .otherwise("Slow Moving")
+                                    )).as("salesClassification"),
 
-                        Aggregation.limit(1)
-                )
-                .as("salesClassificationData");
-    }
+                    // Sort by revenue percentage descending to get the best performing product
+                    Aggregation.sort(Sort.Direction.DESC, "revenuePercentage"),
+
+                    // Take only the top product for this campaign
+                    Aggregation.limit(1)
+            )
+            .as("salesClassificationData");
+}
+
 
     private ProductAdsResponseDto mapToProductAdsDto(Document doc, KPI kpi) {
         ProductAdsResponseDto dto = ProductAdsResponseDto.builder().build();
@@ -765,10 +998,52 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
     }
 
+//    private ProductAdsResponseDto mapToProductAdsDtoWithSalesClassification(Document doc, KPI kpi) {
+//        ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
+//
+//
+//        Double customRoas = getDouble(doc, "customRoas");
+//        if (customRoas != null) {
+//            dto.setCustomRoas(customRoas);
+//            dto.setHasCustomRoas(true);
+//
+//            dto.setRoas(
+//                    MathKt.calculateRoas(
+//                            customRoas,
+//                            dto.getBroadRoi(),
+//                            dto.getDailyBudget()
+//                    )
+//            );
+//
+//            dto.setInsightBudget(
+//                    MathKt.renderInsight(
+//                            MathKt.formulateRecommendation(
+//                                    dto.getCpc(), dto.getAcos(), dto.getClick(), kpi, dto.getRoas(), dto.getDailyBudget()
+//                            )
+//                    )
+//            );
+//        } else {
+//            dto.setHasCustomRoas(false);
+//        }
+//
+//        @SuppressWarnings("unchecked")
+//        List<Document> salesClassificationDocs = (List<Document>) doc.get("salesClassificationData");
+//
+//        if (salesClassificationDocs != null && !salesClassificationDocs.isEmpty()) {
+//            Document salesData = salesClassificationDocs.get(0);
+//            String salesClassification = getString(salesData, "salesClassification");
+//            dto.setSalesClassification(salesClassification != null ? salesClassification : "UNKNOWN");
+//        } else {
+//            dto.setSalesClassification("UNKNOWN");
+//        }
+//
+//        return dto;
+//    }
+
     private ProductAdsResponseDto mapToProductAdsDtoWithSalesClassification(Document doc, KPI kpi) {
         ProductAdsResponseDto dto = mapToProductAdsDto(doc, kpi);
 
-
+        // Handle custom ROAS
         Double customRoas = getDouble(doc, "customRoas");
         if (customRoas != null) {
             dto.setCustomRoas(customRoas);
@@ -793,6 +1068,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             dto.setHasCustomRoas(false);
         }
 
+        // Handle sales classification
         @SuppressWarnings("unchecked")
         List<Document> salesClassificationDocs = (List<Document>) doc.get("salesClassificationData");
 
@@ -800,8 +1076,14 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             Document salesData = salesClassificationDocs.get(0);
             String salesClassification = getString(salesData, "salesClassification");
             dto.setSalesClassification(salesClassification != null ? salesClassification : "UNKNOWN");
+
+            // Optional: Add debug information
+            System.out.println("Sales Classification for Campaign " + dto.getCampaignId() + ": " + salesClassification);
+            System.out.println("Revenue Percentage: " + getDouble(salesData, "revenuePercentage"));
+            System.out.println("Total Revenue: " + getDouble(salesData, "totalRevenue"));
         } else {
             dto.setSalesClassification("UNKNOWN");
+            System.out.println("No sales classification data found for Campaign " + dto.getCampaignId());
         }
 
         return dto;

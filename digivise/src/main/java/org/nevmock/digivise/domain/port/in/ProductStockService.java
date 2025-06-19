@@ -16,7 +16,7 @@ public interface ProductStockService {
 //            Pageable pageable
 //    );
 
-    Page<ProductStockResponseDto> findByShopId(
+    Page<ProductStockResponseWrapperDto> findByShopId(
             String shopId,
             LocalDateTime from,
             LocalDateTime to,

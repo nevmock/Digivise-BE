@@ -178,15 +178,15 @@ public class MerchantServiceImpl implements MerchantService {
     }
 
     @Override
-    public Boolean loginMerchant(String username, String password) {
+    public Boolean loginMerchant(String email, String password) {
 
         HttpClient httpClient = HttpClient.newHttpClient();
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
-                .uri(URI.create("http://103.150.116.30:35577/api/v1/shopee-seller/login"))
+                .uri(URI.create("http://103.150.116.30:1337/api/v1/shopee-seller/login"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(
-                        String.format("{\"username\":\"%s\", \"password\":\"%s\"}", username, password)))
+                        String.format("{\"email\":\"%s\", \"password\":\"%s\"}", email, password)))
                 .build();
 
         HttpResponse.BodyHandler<String> bodyHandler = HttpResponse.BodyHandlers.ofString();
