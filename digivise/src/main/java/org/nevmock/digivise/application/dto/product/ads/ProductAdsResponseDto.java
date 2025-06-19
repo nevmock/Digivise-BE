@@ -2,6 +2,7 @@ package org.nevmock.digivise.application.dto.product.ads;
 
 import lombok.*;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseClassificationDto;
 
 import java.time.LocalDateTime;
@@ -111,4 +112,6 @@ public class ProductAdsResponseDto {
     private Boolean hasProductStock;
 
     private String productPlacement;
+
+    private ProductKeywordResponseWrapperDto keywordWrapper;
 }
