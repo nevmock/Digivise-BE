@@ -19,4 +19,5 @@ public class LoginResponseDto {
     private UUID userId;
     private String username;
     private List<MerchantResponseDto> merchants;
+    private MerchantResponseDto activeMerchant;
 }

@@ -1,6 +1,7 @@
 package org.nevmock.digivise.application.service;
 
 import org.nevmock.digivise.application.dto.auth.LoginResponseDto;
+import org.nevmock.digivise.application.dto.kpi.KPIResponseDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 import org.nevmock.digivise.application.dto.user.UserRequestDto;
 import org.nevmock.digivise.application.dto.user.UserResponseDto;
@@ -46,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserResponseDto user = userService.getUserByUsername(authentication.getName());
 
+
         return LoginResponseDto
                 .builder()
                 .accessToken(token)
@@ -60,6 +62,21 @@ public class AuthServiceImpl implements AuthService {
                         .createdAt(merchant.getCreatedAt())
                         .updatedAt(merchant.getUpdatedAt())
                         .build()).collect(Collectors.toList()))
+                .activeMerchant(
+                        user.getActiveMerchant() != null ? MerchantResponseDto
+                                .builder()
+                                .id(user.getActiveMerchant().getId())
+                                .merchantName(user.getActiveMerchant().getMerchantName())
+                                .merchantShopeeId(user.getActiveMerchant().getMerchantShopeeId())
+                                .userId(user.getId())
+                                .createdAt(user.getActiveMerchant().getCreatedAt())
+                                .updatedAt(user.getActiveMerchant().getUpdatedAt())
+                                .officeAddress(user.getActiveMerchant().getOfficeAddress())
+                                .factoryAddress(user.getActiveMerchant().getFactoryAddress())
+                                .sectorIndustry(user.getActiveMerchant().getSectorIndustry())
+                                .name(user.getActiveMerchant().getName())
+                                .build() : null
+                )
                 .build();
     }
 

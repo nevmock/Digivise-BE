@@ -49,8 +49,8 @@ public class MerchantServiceImpl implements MerchantService {
         newMerchant.setId(UUID.randomUUID());
         newMerchant.setName(merchant.getName());
         newMerchant.setUser(user);
-        newMerchant.setMerchantName("");
-        newMerchant.setMerchantShopeeId("");
+        newMerchant.setMerchantName(null);
+        newMerchant.setMerchantShopeeId(null);
         newMerchant.setFactoryAddress(merchant.getFactoryAddress());
         newMerchant.setOfficeAddress(merchant.getOfficeAddress());
         newMerchant.setSectorIndustry(merchant.getSectorIndustry());
@@ -183,7 +183,10 @@ public class MerchantServiceImpl implements MerchantService {
                 .userId(merchant.getUser().getId())
                 .kpi(
                     kpiResp
-                ).build();
+                )
+                .officeAddress(merchant.getOfficeAddress())
+                .factoryAddress(merchant.getFactoryAddress())
+                .sectorIndustry(merchant.getSectorIndustry()).build();
 
     }
 
@@ -252,17 +255,32 @@ public class MerchantServiceImpl implements MerchantService {
 
             MerchantInfoResponseDto result = objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
 
-            Merchant merchant = merchantRepository.findById(merchantId).orElse(null);
+            Optional<Merchant> merchant = merchantRepository.findById(merchantId);
 
-            if (merchant.getMerchantShopeeId().equals(String.valueOf(result.getData().getData().getShopId()))) {
-                return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
+            Merchant merchantToUpdate = merchant.get();
+
+            if (merchant == null) {
+                throw new RuntimeException("Merchant not found with ID: " + merchantId);
             }
 
-            merchant.setMerchantName(result.getData().getData().getName());
-            merchant.setPassword(password);
-            merchant.setMerchantShopeeId(String.valueOf(result.getData().getData().getShopId()));
+            if (merchantToUpdate.getMerchantShopeeId() != null) {
+                if (merchantToUpdate.getMerchantShopeeId().equals(String.valueOf(result.getData().getData().getShopId()))) {
+                    user.setActiveMerchant(merchantToUpdate);
+                    userRepository.save(user);
 
-            merchantRepository.save(merchant);
+                    return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
+                }
+            }
+
+            merchantToUpdate.setMerchantName(result.getData().getData().getName());
+            merchantToUpdate.setPassword(password);
+            merchantToUpdate.setMerchantShopeeId(String.valueOf(result.getData().getData().getShopId()));
+
+            merchantRepository.save(merchantToUpdate);
+
+            user.setActiveMerchant(merchantToUpdate);
+
+            userRepository.save(user);
 
             return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
 

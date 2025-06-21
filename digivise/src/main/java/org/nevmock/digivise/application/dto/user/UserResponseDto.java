@@ -34,4 +34,6 @@ public class UserResponseDto implements Serializable {
     private Timestamp updatedAt;
 
     private List<Merchant> merchants;
+
+    private MerchantResponseDto activeMerchant;
 }

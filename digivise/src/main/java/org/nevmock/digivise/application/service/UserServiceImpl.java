@@ -1,8 +1,10 @@
 package org.nevmock.digivise.application.service;
 
 import lombok.RequiredArgsConstructor;
+import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 import org.nevmock.digivise.application.dto.user.UserRequestDto;
 import org.nevmock.digivise.application.dto.user.UserResponseDto;
+import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.model.User;
 import org.nevmock.digivise.domain.port.in.UserService;
 import org.nevmock.digivise.domain.port.out.UserRepository;
@@ -104,6 +106,26 @@ public class UserServiceImpl implements UserService {
                 .merchants(user.getMerchants())
                 .createdAt(Timestamp.valueOf(user.getCreatedAt().toString()))
                 .updatedAt(Timestamp.valueOf(user.getUpdatedAt().toString()))
+                .activeMerchant(toMerchantDto(user.getActiveMerchant()))
+                .build();
+    }
+
+    private MerchantResponseDto toMerchantDto(Merchant merchant) {
+        if (merchant == null) {
+            return null;
+        }
+        return MerchantResponseDto.builder()
+                .id(merchant.getId())
+                .merchantName(merchant.getMerchantName())
+                .merchantShopeeId(merchant.getMerchantShopeeId())
+                .userId(merchant.getUser().getId())
+                .createdAt(Timestamp.valueOf(merchant.getCreatedAt().toString()))
+                .updatedAt(Timestamp.valueOf(merchant.getUpdatedAt().toString()))
+                .merchantShopeeId(merchant.getMerchantShopeeId())
+                .officeAddress(merchant.getOfficeAddress())
+                .factoryAddress(merchant.getFactoryAddress())
+                .sectorIndustry(merchant.getSectorIndustry())
+                .name(merchant.getName())
                 .build();
     }
 }

@@ -40,4 +40,8 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<Merchant> merchants;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "active_merchant_id")
+    private Merchant activeMerchant;
 }
