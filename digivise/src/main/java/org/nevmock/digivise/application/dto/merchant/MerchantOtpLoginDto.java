@@ -11,5 +11,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public class MerchantOtpLoginDto {
     private String username;
+    private String merchantId;
     private String otp;
 }

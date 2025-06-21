@@ -47,9 +47,13 @@ public class MerchantServiceImpl implements MerchantService {
         Merchant newMerchant = new Merchant();
 
         newMerchant.setId(UUID.randomUUID());
-        newMerchant.setMerchantName(merchant.getMerchantName());
+        newMerchant.setName(merchant.getName());
         newMerchant.setUser(user);
-        newMerchant.setMerchantShopeeId(merchant.getMerchantShopeeId());
+        newMerchant.setMerchantName("");
+        newMerchant.setMerchantShopeeId("");
+        newMerchant.setFactoryAddress(merchant.getFactoryAddress());
+        newMerchant.setOfficeAddress(merchant.getOfficeAddress());
+        newMerchant.setSectorIndustry(merchant.getSectorIndustry());
         newMerchant.setCreatedAt(new Timestamp(System.currentTimeMillis()));
         newMerchant.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
 
@@ -127,7 +131,7 @@ public class MerchantServiceImpl implements MerchantService {
 
         Merchant merchantToUpdate = existingMerchant.get();
 
-        merchantToUpdate.setMerchantName(updatedMerchant.getMerchantName());
+        merchantToUpdate.setName(updatedMerchant.getName());
         merchantToUpdate.setUser(Objects.requireNonNull(getCurrentUser(userRepository))
                 .orElseThrow(() -> new RuntimeException("User not found!")));
         merchantToUpdate.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
@@ -223,7 +227,7 @@ public class MerchantServiceImpl implements MerchantService {
     }
 
     @Override
-    public MerchantInfoResponseDto otpLoginMerchant(String username, String otpCode) {
+    public MerchantInfoResponseDto otpLoginMerchant(String username, UUID merchantId, String otpCode) {
 
         User user = Objects.requireNonNull(getCurrentUser(userRepository))
                 .orElseThrow(() -> new RuntimeException("User not found!"));
@@ -248,37 +252,17 @@ public class MerchantServiceImpl implements MerchantService {
 
             MerchantInfoResponseDto result = objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
 
-            Merchant merchant = new Merchant();
+            Merchant merchant = merchantRepository.findById(merchantId).orElse(null);
 
-            merchant.setId(UUID.randomUUID());
+            if (merchant.getMerchantShopeeId().equals(String.valueOf(result.getData().getData().getShopId()))) {
+                return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
+            }
+
             merchant.setMerchantName(result.getData().getData().getName());
+            merchant.setPassword(password);
             merchant.setMerchantShopeeId(String.valueOf(result.getData().getData().getShopId()));
-            merchant.setUser(user);
-            merchant.setCreatedAt(new Timestamp(System.currentTimeMillis()));
-            merchant.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
-            merchant.setUsername(username);
-            merchant.setPassword(this.password);
-
-            KPI kpi = KPI
-                    .builder()
-                    .user(user)
-                    .merchant(merchant)
-                    .maxAcos(0.0)
-                    .maxCpc(0.0)
-                    .maxAdjustment(0.0)
-                    .multiplier(0.0)
-                    .minBidSearch(0.0)
-                    .maxKlik(0.0)
-                    .minKlik(0.0)
-                    .cpcScaleFactor(0.0)
-                    .acosScaleFactor(0.0)
-                    .id(UUID.randomUUID())
-                    .minAdjustment(0.0)
-                    .minBidReco(0.0)
-                    .build();
 
             merchantRepository.save(merchant);
-            kpiRepository.save(kpi);
 
             return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
 

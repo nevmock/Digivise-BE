@@ -73,7 +73,7 @@ public class MerchantController {
             @RequestBody
             MerchantOtpLoginDto merchantOtpLoginDto
     ) {
-        MerchantInfoResponseDto merchant = merchantService.otpLoginMerchant(merchantOtpLoginDto.getUsername(), merchantOtpLoginDto.getOtp());
+        MerchantInfoResponseDto merchant = merchantService.otpLoginMerchant(merchantOtpLoginDto.getUsername(), UUID.fromString(merchantOtpLoginDto.getMerchantId()), merchantOtpLoginDto.getOtp());
         return ResponseEntity.ok(merchant);
     }
 }

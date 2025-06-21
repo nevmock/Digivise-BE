@@ -24,5 +24,5 @@ public interface MerchantService {
 
     Boolean loginMerchant(String username, String password);
 
-    MerchantInfoResponseDto otpLoginMerchant(String username, String otpCode);
+    MerchantInfoResponseDto otpLoginMerchant(String username, UUID merchantId, String otpCode);
 }

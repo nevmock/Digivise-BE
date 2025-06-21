@@ -19,8 +19,6 @@ public class MerchantResponseDto {
 
     private String merchantName;
 
-    private String sessionPath;
-
     private String merchantShopeeId;
 
     private Timestamp createdAt;
@@ -30,4 +28,11 @@ public class MerchantResponseDto {
     private UUID userId;
 
     private KPIResponseDto kpi;
+
+    private String name;
+    private String sectorIndustry;
+    private String officeAddress;
+    private String factoryAddress;
+
+    private String username;
 }

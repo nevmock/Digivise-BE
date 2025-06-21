@@ -11,11 +11,16 @@ import lombok.Setter;
 @NoArgsConstructor
 public class MerchantRequestDto {
 
-    private String merchantName;
-    private String merchantShopeeId;
-    private String username;
-    private String email;
-    private String password;
+    private String name;
+    private String sectorIndustry;
+    private String officeAddress;
+    private String factoryAddress;
+
+//    private String merchantName;
+//    private String merchantShopeeId;
+//    private String username;
+//    private String email;
+//    private String password;
 
 //    @Getter
 //    @Setter

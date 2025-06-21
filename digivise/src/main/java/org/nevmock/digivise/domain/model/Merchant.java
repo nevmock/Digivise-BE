@@ -20,12 +20,15 @@ public class Merchant {
     @Column(name = "merchant_id", nullable = false, unique = true)
     private UUID id;
 
-    @Column(name = "merchant_shopee_id", nullable = false, unique = true)
+    @Column(name = "merchant_shopee_id", nullable = true, unique = true)
     private String merchantShopeeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Column(name = "name", nullable = true, length = 255)
+    private String name;
 
     @Column(name = "merchant_name", nullable = true, length = 255)
     private String merchantName;
@@ -39,9 +42,18 @@ public class Merchant {
     @Column(name = "updated_at")
     private Timestamp updatedAt;
 
-    @Column(name = "username", nullable = false, length = 255)
+    @Column(name = "username", nullable = true, length = 255)
     private String username;
 
-    @Column(name = "password", nullable = false, length = 255)
+    @Column(name = "password", nullable = true, length = 255)
     private String password;
+
+    @Column(name = "sector_industry", nullable = true, length = 255)
+    private String sectorIndustry;
+
+    @Column(name = "office_address", nullable = true, length = 255)
+    private String officeAddress;
+
+    @Column(name = "factory_address", nullable = true, length = 255)
+    private String factoryAddress;
 }
