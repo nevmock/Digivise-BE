@@ -647,7 +647,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         dto.setBroadOrderAmount(getDouble(doc, "broadOrderAmount"));
         dto.setProductPlacement(getString(doc, "productPlacement"));
 
-        // Handle keyword wrapper structure
+        
         @SuppressWarnings("unchecked")
         List<Document> keywordWrapperDocs = (List<Document>) doc.get("keywordWrapper");
 
@@ -832,7 +832,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             String classification = getString(salesData, "salesClassification");
             dto.setSalesClassification(classification != null ? classification : "UNKNOWN");
 
-            // Add debugging logs
+            
             System.out.println("Sales Classification for Campaign " + dto.getCampaignId() + ": " + classification);
             System.out.println("Revenue Percentage: " + getDouble(salesData, "revenuePercentage"));
             System.out.println("Total Revenue: " + getDouble(salesData, "totalCampaignRevenue"));
