@@ -41,62 +41,48 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     ) {
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Match by shop_id and date range
+        long fromTs = from.atZone(ZoneId.systemDefault()).toEpochSecond();
+
+        // Match by shop_id and from >=
         ops.add(Aggregation.match(
                 Criteria.where("shop_id").is(shopId)
-                        .and("createdAt").gte(from).lte(to)
+                        .and("from").gte(fromTs)
         ));
 
-        // Unwind the data array to process each product individually
+        // Unwind the data array
         ops.add(Aggregation.unwind("data"));
 
-        // Filter by product name if provided
+        // Optional: filter by keyword in data.key
         if (name != null && !name.trim().isEmpty()) {
-            Criteria nameFilter = Criteria.where("data.name")
-                    .regex(".*" + name.trim() + ".*", "i"); // Case-insensitive partial match
-            ops.add(Aggregation.match(nameFilter));
+            ops.add(Aggregation.match(
+                    Criteria.where("data.key").regex(".*" + name.trim() + ".*", "i")
+            ));
         }
 
-        // Project the fields we need
+        // Project only the fields you need
         ops.add(Aggregation.project()
-                .and("data.id").as("productId")
-                .and("_id").as("id")
                 .and("uuid").as("uuid")
                 .and("shop_id").as("shopId")
                 .and("createdAt").as("createdAt")
-                .and("data.name").as("name")
-                .and("data.cover_image").as("coverImage")
-                .and("data.parent_sku").as("parentSku")
-                .and("data.status").as("status")
-                .and("data.price_detail.price_min").as("priceMin")
-                .and("data.price_detail.price_max").as("priceMax")
-                .and("data.price_detail.selling_price_min").as("sellingPriceMin")
-                .and("data.price_detail.selling_price_max").as("sellingPriceMax")
-                .and("data.price_detail.has_discount").as("hasDiscount")
-                .and("data.price_detail.max_discount_percentage").as("maxDiscountPercentage")
-                .and("data.stock_detail.total_available_stock").as("totalAvailableStock")
-                .and("data.stock_detail.total_seller_stock").as("totalSellerStock")
-                .and("data.statistics.view_count").as("viewCount")
-                .and("data.statistics.liked_count").as("likedCount")
-                .and("data.statistics.sold_count").as("soldCount")
-                .and("data.promotion.wholesale").as("wholesale")
-                .and("data.promotion.has_bundle_deal").as("hasBundleDeal")
-                .and("data.modify_time").as("modifyTime")
-                .and("data.create_time").as("createTime")
+                .and("from").as("from")
+                .and("to").as("to")
+                .and("data.key").as("keyword")
+                .and("data.ratio").as("ratio")
+                .and("data.metrics").as("metrics")
         );
 
-        // Use facet for pagination and counting
+        // Facet for pagination and counting
         FacetOperation facet = Aggregation.facet(
                         Aggregation.skip((long) pageable.getOffset()),
                         Aggregation.limit(pageable.getPageSize())
                 ).as("pagedResults")
-                .and(Aggregation.count().as("total")).as("countResult");
+                .and(Aggregation.count().as("totalCount")).as("countResult");
         ops.add(facet);
 
         // Execute aggregation
         AggregationResults<Document> results = mongoTemplate.aggregate(
                 Aggregation.newAggregation(ops),
-                "ProductKeyword", // Collection name - adjust as needed
+                "ProductKey",
                 Document.class
         );
 
@@ -105,28 +91,36 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
+        // Extract paged documents
         @SuppressWarnings("unchecked")
         List<Document> docs = (List<Document>) root.get("pagedResults");
 
-        // Get total count
+        // Total count
         @SuppressWarnings("unchecked")
-        List<Document> countResults = (List<Document>) root.get("countResult");
-        long total = countResults.isEmpty() ? 0 : countResults.get(0).getInteger("total", 0);
+        List<Document> countDocs = (List<Document>) root.get("countResult");
+        long total = countDocs.isEmpty() ? 0 : countDocs.get(0).getInteger("totalCount");
 
-        // Map documents to DTOs
+        // Map to DTOs
         List<ProductKeywordResponseDto> dtos = docs.stream()
-                .map(this::mapToDto)
+                .map(doc -> ProductKeywordResponseDto.builder()
+                        .uuid(doc.getString("uuid"))
+                        .shopId(doc.getString("shopId"))
+                        .createdAt(convertDate(doc.getDate("createdAt")))
+                        .from(getLong(doc, "from"))
+                        .to(getLong(doc, "to"))
+                        .keyword(doc.getString("keyword"))
+                        //.ratio((Document) doc.get("ratio"))
+//                        .metrics((Document) doc.get("metrics"))
+                        .build()
+                )
                 .collect(Collectors.toList());
 
-        // Group by product ID
-        Map<Long, List<ProductKeywordResponseDto>> grouped = dtos.stream()
-                .filter(d -> d.getProductId() != null)
-                .collect(Collectors.groupingBy(ProductKeywordResponseDto::getProductId));
+        // Group by keyword (or another key) if needed
+        Map<String, List<ProductKeywordResponseDto>> grouped = dtos.stream()
+                .collect(Collectors.groupingBy(ProductKeywordResponseDto::getKeyword));
 
-        // Create wrapper DTOs
         List<ProductKeywordResponseWrapperDto> wrappers = grouped.entrySet().stream()
                 .map(e -> ProductKeywordResponseWrapperDto.builder()
-                        .productId(e.getKey())
                         .shopId(shopId)
                         .from(from)
                         .to(to)
@@ -137,80 +131,16 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         return new PageImpl<>(wrappers, pageable, total);
     }
 
-    private ProductKeywordResponseDto mapToDto(Document doc) {
-        return ProductKeywordResponseDto.builder()
-                .id(getString(doc, "id"))
-                .uuid(getString(doc, "uuid"))
-                .productId(getNumberLong(doc, "productId"))
-                .shopId(getString(doc, "shopId"))
-                .createdAt(getDateTime(doc, "createdAt"))
-                .name(getString(doc, "name"))
-                .coverImage(getString(doc, "coverImage"))
-                .parentSku(getString(doc, "parentSku"))
-                .status(getNumberInteger(doc, "status"))
-                .priceMin(getBigDecimal(doc, "priceMin"))
-                .priceMax(getBigDecimal(doc, "priceMax"))
-                .sellingPriceMin(getBigDecimal(doc, "sellingPriceMin"))
-                .sellingPriceMax(getBigDecimal(doc, "sellingPriceMax"))
-                .hasDiscount(getBoolean(doc, "hasDiscount"))
-                .maxDiscountPercentage(getNumberInteger(doc, "maxDiscountPercentage"))
-                .totalAvailableStock(getNumberInteger(doc, "totalAvailableStock"))
-                .totalSellerStock(getNumberInteger(doc, "totalSellerStock"))
-                .viewCount(getNumberInteger(doc, "viewCount"))
-                .likedCount(getNumberInteger(doc, "likedCount"))
-                .soldCount(getNumberInteger(doc, "soldCount"))
-                .wholesale(getBoolean(doc, "wholesale"))
-                .hasBundleDeal(getBoolean(doc, "hasBundleDeal"))
-                .modifyTime(getNumberLong(doc, "modifyTime"))
-                .createTime(getNumberLong(doc, "createTime"))
-                .build();
+    private LocalDateTime convertDate(Date date) {
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 
-    // Helper methods for type conversion
-    private String getString(Document d, String key) {
-        Object v = d.get(key);
-        return v instanceof String ? (String) v : null;
-    }
-
-    private Long getNumberLong(Document d, String key) {
-        Object v = d.get(key);
-        return v instanceof Number ? ((Number) v).longValue() : null;
-    }
-
-    private Integer getNumberInteger(Document d, String key) {
-        Object v = d.get(key);
-        return v instanceof Number ? ((Number) v).intValue() : null;
-    }
-
-    private Double getNumberDouble(Document d, String key) {
-        Object v = d.get(key);
-        return v instanceof Number ? ((Number) v).doubleValue() : null;
-    }
-
-    private java.math.BigDecimal getBigDecimal(Document d, String key) {
-        Object v = d.get(key);
-        if (v instanceof String) {
-            try {
-                return new java.math.BigDecimal((String) v);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        } else if (v instanceof Number) {
-            return java.math.BigDecimal.valueOf(((Number) v).doubleValue());
+    private Long getLong(Document doc, String key) {
+        Object v = doc.get(key);
+        if (v instanceof Number) {
+            return ((Number) v).longValue();
         }
         return null;
     }
 
-    private Boolean getBoolean(Document d, String key) {
-        Object v = d.get(key);
-        return v instanceof Boolean ? (Boolean) v : null;
-    }
-
-    private LocalDateTime getDateTime(Document d, String key) {
-        Object v = d.get(key);
-        if (v instanceof Date) {
-            return ((Date) v).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-        }
-        return null;
-    }
 }

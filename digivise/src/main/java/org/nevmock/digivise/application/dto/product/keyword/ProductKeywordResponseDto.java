@@ -50,4 +50,8 @@ public class ProductKeywordResponseDto {
     // Timestamps
     private Long modifyTime;
     private Long createTime;
+
+    private String keyword;
+    private Long from;
+    private Long to;
 }
