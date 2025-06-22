@@ -1,11 +1,10 @@
 package org.nevmock.digivise.application.service;
 
-import com.mongodb.client.model.Variable;
 import org.bson.Document;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
-import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
-import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordAdsResponseDto;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordAdsResponseWrapperDto;
 import org.nevmock.digivise.domain.model.KPI;
 import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
@@ -21,10 +20,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
-import static org.springframework.data.mongodb.core.aggregation.ArithmeticOperators.*;
-import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*;
+
 import static org.springframework.data.mongodb.core.aggregation.ComparisonOperators.*;
-import static org.springframework.data.mongodb.core.aggregation.ConvertOperators.*;
+
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
@@ -659,11 +657,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             List<Document> keywordDocs = (List<Document>) wrapperDoc.get("keywords");
 
             if (keywordDocs != null && !keywordDocs.isEmpty()) {
-                List<ProductKeywordResponseDto> keywords = keywordDocs.stream()
+                List<ProductKeywordAdsResponseDto> keywords = keywordDocs.stream()
                         .flatMap(kd -> processKeywordDocument(kd, dto, kpi))
                         .collect(Collectors.toList());
 
-                ProductKeywordResponseWrapperDto keywordWrapper = ProductKeywordResponseWrapperDto.builder()
+                ProductKeywordAdsResponseWrapperDto keywordWrapper = ProductKeywordAdsResponseWrapperDto.builder()
                         .campaignId(dto.getCampaignId())
                         .from(LocalDateTime.parse(dto.getFrom()))
                         .to(LocalDateTime.parse(dto.getTo()))
@@ -691,7 +689,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         return dto;
     }
 
-    private Stream<ProductKeywordResponseDto> processKeywordDocument(Document kd, ProductAdsResponseDto dto, KPI kpi) {
+    private Stream<ProductKeywordAdsResponseDto> processKeywordDocument(Document kd, ProductAdsResponseDto dto, KPI kpi) {
         Object rawData = kd.get("data");
         if (rawData instanceof List) {
             @SuppressWarnings("unchecked")
@@ -699,20 +697,20 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             return dataDocs.stream()
                     .map(data -> buildKeywordDto(kd, data, kpi));
         } else if (rawData instanceof Document) {
-            ProductKeywordResponseDto pk = buildKeywordDto(kd, (Document) rawData, kpi);
+            ProductKeywordAdsResponseDto pk = buildKeywordDto(kd, (Document) rawData, kpi);
             return Stream.of(pk);
         } else {
-            ProductKeywordResponseDto pk = buildKeywordDto(kd, null, kpi);
+            ProductKeywordAdsResponseDto pk = buildKeywordDto(kd, null, kpi);
             return Stream.of(pk);
         }
     }
 
-    private ProductKeywordResponseDto buildKeywordDto(Document kd, Document data, KPI kpi) {
+    private ProductKeywordAdsResponseDto buildKeywordDto(Document kd, Document data, KPI kpi) {
         if (data == null) {
-            return ProductKeywordResponseDto.builder().build();
+            return ProductKeywordAdsResponseDto.builder().build();
         }
 
-        ProductKeywordResponseDto pk = ProductKeywordResponseDto.builder().build();
+        ProductKeywordAdsResponseDto pk = ProductKeywordAdsResponseDto.builder().build();
         pk.setId(getString(kd, "_id"));
         pk.setShopeeMerchantId(getString(kd, "shop_id"));
         pk.setCampaignId(getLong(kd, "campaign_id"));

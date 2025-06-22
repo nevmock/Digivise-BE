@@ -1,22 +1,17 @@
 package org.nevmock.digivise.domain.port.in;
 
-import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
-import org.nevmock.digivise.domain.model.mongo.keyword.ProductKeyword;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 public interface ProductKeywordService {
-    List<ProductKeywordResponseDto> findAll();
-
-    List<ProductKeywordResponseDto> findByCampaignId(Long campaignId);
-
-    List<ProductKeywordResponseDto> findByShopId(String shopId);
-
-    List<ProductKeywordResponseDto> findByCreatedAtBetween(String from, String to);
-
-    List<ProductKeywordResponseDto> findByCreatedAtGreaterThanEqual(String from);
-
-    List<ProductKeywordResponseDto> findByCreatedAtLessThanEqual(String to);
-
-    List<ProductKeywordResponseDto> findByFromAndTo(String from, String to);
+    Page<ProductKeywordResponseWrapperDto> findByRange(
+            String shopId,
+            LocalDateTime from,
+            LocalDateTime to,
+            String name,
+            Pageable pageable
+    );
 }

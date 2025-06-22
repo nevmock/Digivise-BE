@@ -12,10 +12,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductKeywordResponseWrapperDto {
-    private Long productId;
-    private String shopId;
+public class ProductKeywordAdsResponseWrapperDto {
+    private Long campaignId;
     private LocalDateTime from;
     private LocalDateTime to;
-    private List<ProductKeywordResponseDto> data;
+    private List<ProductKeywordAdsResponseDto> data;
 }

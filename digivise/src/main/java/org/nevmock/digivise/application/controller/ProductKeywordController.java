@@ -1,0 +1,47 @@
+package org.nevmock.digivise.application.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
+import org.nevmock.digivise.application.dto.product.performance.ProductPerformanceWrapperDto;
+import org.nevmock.digivise.domain.port.in.ProductAdsService;
+import org.nevmock.digivise.domain.port.in.ProductKeywordService;
+import org.nevmock.digivise.domain.port.in.ProductPerformanceService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/product-keyword")
+@RequiredArgsConstructor
+public class ProductKeywordController {
+    private final ProductKeywordService productKeywordService;
+
+    @GetMapping("")
+    public ResponseEntity<Page<ProductKeywordResponseWrapperDto>> getProductPerformance(
+            @RequestParam
+            String shopId,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to,
+            @RequestParam(required = false)
+            String name,
+            @RequestParam(defaultValue = "0")
+            int page,
+            @RequestParam(defaultValue = "10")
+            int limit
+    ) {
+        PageRequest pageRequest = PageRequest.of(page, limit);
+
+        return ResponseEntity.ok(productKeywordService.findByRange(shopId, from, to, name, pageRequest));
+    }
+}

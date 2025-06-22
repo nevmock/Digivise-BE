@@ -1,7 +1,7 @@
 package org.nevmock.digivise.infrastructure.config.mongo;
 
 import org.bson.Document;
-import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordAdsResponseDto;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.ReadingConverter;
 
@@ -10,11 +10,11 @@ import java.time.ZoneId;
 // 1) Create a converter from Document → ProductKeywordResponseDto
 @ReadingConverter
 public class DocumentToProductKeywordResponseDtoConverter
-        implements Converter<Document, ProductKeywordResponseDto> {
+        implements Converter<Document, ProductKeywordAdsResponseDto> {
 
     @Override
-    public ProductKeywordResponseDto convert(Document src) {
-        return ProductKeywordResponseDto.builder()
+    public ProductKeywordAdsResponseDto convert(Document src) {
+        return ProductKeywordAdsResponseDto.builder()
                 .campaignId(src.getLong("campaignId"))
                 .id(src.getObjectId("id").toString())
                 .key(src.getString("key"))

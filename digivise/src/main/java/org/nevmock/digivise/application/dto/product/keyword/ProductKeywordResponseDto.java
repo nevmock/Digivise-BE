@@ -1,35 +1,53 @@
 package org.nevmock.digivise.application.dto.product.keyword;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@RequiredArgsConstructor
-@AllArgsConstructor
-@Setter
-@Getter
+
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProductKeywordResponseDto {
-    private Long campaignId;
-
     private String id;
-
-    private String key;
-
-    private String shopeeMerchantId;
-    private Double acos;
-    private Double cpc;
-    private String from;
-    private String to;
-    private Long shopeeFrom;
-    private Long shopeeTo;
+    private String uuid;
+    private Long productId;
+    private String shopId;
     private LocalDateTime createdAt;
 
-    private Double cost;
+    // Product basic info
+    private String name;
+    private String coverImage;
+    private String parentSku;
+    private Integer status;
 
-    private Double click;
-    private Double ctr;
-    private String insight;
+    // Price details
+    private BigDecimal priceMin;
+    private BigDecimal priceMax;
+    private BigDecimal sellingPriceMin;
+    private BigDecimal sellingPriceMax;
+    private Boolean hasDiscount;
+    private Integer maxDiscountPercentage;
 
-    private Double impression;
+    // Stock details
+    private Integer totalAvailableStock;
+    private Integer totalSellerStock;
+
+    // Statistics
+    private Integer viewCount;
+    private Integer likedCount;
+    private Integer soldCount;
+
+    // Promotion info
+    private Boolean wholesale;
+    private Boolean hasBundleDeal;
+
+    // Timestamps
+    private Long modifyTime;
+    private Long createTime;
 }

@@ -1,7 +1,8 @@
 package org.nevmock.digivise.application.dto.product.ads;
 
 import lombok.*;
-import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordAdsResponseDto;
+import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordAdsResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseClassificationDto;
 
@@ -52,7 +53,7 @@ public class ProductAdsResponseDto {
     private Double broadOrderAmount;
     private Double cr;
 
-    private List<ProductKeywordResponseDto> keywords;
+    private List<ProductKeywordAdsResponseDto> keywords;
 
     private String biddingStrategy;
 
@@ -113,5 +114,5 @@ public class ProductAdsResponseDto {
 
     private String productPlacement;
 
-    private ProductKeywordResponseWrapperDto keywordWrapper;
+    private ProductKeywordAdsResponseWrapperDto keywordWrapper;
 }
