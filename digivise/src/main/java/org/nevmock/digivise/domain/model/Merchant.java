@@ -20,7 +20,7 @@ public class Merchant {
     @Column(name = "merchant_id", nullable = false, unique = true)
     private UUID id;
 
-    @Column(name = "merchant_shopee_id", nullable = true, unique = true)
+    @Column(name = "merchant_shopee_id", nullable = true, unique = false)
     private String merchantShopeeId;
 
     @ManyToOne(fetch = FetchType.LAZY)

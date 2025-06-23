@@ -280,6 +280,7 @@ public class MerchantServiceImpl implements MerchantService {
             if (existingShopee.isPresent() && !existingShopee.get().getId().equals(merchantId)) {
                 // Sudah dipakai merchant lain, skip update Shopee ID
                 // Bisa log info di sini kalau perlu
+                merchantToUpdate.setMerchantShopeeId(newShopeeId);
             } else {
                 // Aman untuk set Shopee ID baru
                 merchantToUpdate.setMerchantShopeeId(newShopeeId);
