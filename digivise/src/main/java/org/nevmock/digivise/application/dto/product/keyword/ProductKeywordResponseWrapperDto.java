@@ -12,10 +12,19 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+//public class ProductKeywordResponseWrapperDto {
+//    private Long productId;
+//    private String shopId;
+//    private LocalDateTime from;
+//    private LocalDateTime to;
+//    private List<ProductKeywordResponseDto> data;
+//}
 public class ProductKeywordResponseWrapperDto {
-    private Long productId;
+    private Long campaignId;
     private String shopId;
-    private LocalDateTime from;
-    private LocalDateTime to;
+    private LocalDateTime from1;
+    private LocalDateTime to1;
+    private LocalDateTime from2;
+    private LocalDateTime to2;
     private List<ProductKeywordResponseDto> data;
 }

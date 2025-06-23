@@ -24,19 +24,27 @@ public class ProductKeywordController {
     private final ProductKeywordService productKeywordService;
 
     @GetMapping("")
-    public ResponseEntity<Page<ProductKeywordResponseWrapperDto>> getProductPerformance(
+    public ResponseEntity<Page<ProductKeywordResponseWrapperDto>> getProductKey(
             @RequestParam
             String shopId,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime from,
+            LocalDateTime from1,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime to,
+            LocalDateTime to1,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from2,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to2,
             @RequestParam(required = false)
             String name,
             @RequestParam(required = false)
             Long campaignId,
+            @RequestParam(required = false)
+            String type,
             @RequestParam(defaultValue = "0")
             int page,
             @RequestParam(defaultValue = "10")
@@ -44,6 +52,6 @@ public class ProductKeywordController {
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productKeywordService.findByRange(shopId, from, to, name, campaignId, pageRequest));
+        return ResponseEntity.ok(productKeywordService.findByRange(shopId, from1, to1, from2, to2, name, campaignId, pageRequest));
     }
 }
