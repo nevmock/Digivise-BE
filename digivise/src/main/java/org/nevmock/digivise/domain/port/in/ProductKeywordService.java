@@ -12,6 +12,7 @@ public interface ProductKeywordService {
             LocalDateTime from,
             LocalDateTime to,
             String name,
+            Long campaignId,
             Pageable pageable
     );
 }

@@ -48,6 +48,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
             LocalDateTime from,
             LocalDateTime to,
             String name,
+            Long campaignId,
             Pageable pageable
     ) {
         Merchant merchant = merchantRepository
@@ -65,6 +66,12 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                 Criteria.where("shop_id").is(shopId)
                         .and("from").gte(fromTs)
         ));
+
+        if (campaignId != null) {
+            ops.add(Aggregation.match(
+                    Criteria.where("campaign_id").is(campaignId)
+            ));
+        }
 
         ops.add(Aggregation.unwind("data.data"));
 

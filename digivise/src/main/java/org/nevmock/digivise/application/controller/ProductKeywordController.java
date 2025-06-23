@@ -35,6 +35,8 @@ public class ProductKeywordController {
             LocalDateTime to,
             @RequestParam(required = false)
             String name,
+            @RequestParam(required = false)
+            Long campaignId,
             @RequestParam(defaultValue = "0")
             int page,
             @RequestParam(defaultValue = "10")
@@ -42,6 +44,6 @@ public class ProductKeywordController {
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productKeywordService.findByRange(shopId, from, to, name, pageRequest));
+        return ResponseEntity.ok(productKeywordService.findByRange(shopId, from, to, name, campaignId, pageRequest));
     }
 }
