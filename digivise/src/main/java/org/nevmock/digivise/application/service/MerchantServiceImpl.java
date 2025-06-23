@@ -132,6 +132,9 @@ public class MerchantServiceImpl implements MerchantService {
         Merchant merchantToUpdate = existingMerchant.get();
 
         merchantToUpdate.setName(updatedMerchant.getName());
+        merchantToUpdate.setOfficeAddress(updatedMerchant.getOfficeAddress());
+        merchantToUpdate.setFactoryAddress(updatedMerchant.getFactoryAddress());
+        merchantToUpdate.setSectorIndustry(updatedMerchant.getSectorIndustry());
         merchantToUpdate.setUser(Objects.requireNonNull(getCurrentUser(userRepository))
                 .orElseThrow(() -> new RuntimeException("User not found!")));
         merchantToUpdate.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
@@ -177,6 +180,7 @@ public class MerchantServiceImpl implements MerchantService {
 
         return MerchantResponseDto.builder()
                 .id(merchant.getId())
+                .name(merchant.getName())
                 .merchantName(merchant.getMerchantName())
                 .merchantShopeeId(merchant.getMerchantShopeeId())
                 .createdAt(merchant.getCreatedAt())
@@ -267,7 +271,7 @@ public class MerchantServiceImpl implements MerchantService {
 
                 user.setActiveMerchant(merchantToUpdate);
                 userRepository.save(user);
-                return result;
+                    return result;
             }
 
             // Cek kalau Shopee ID sudah dipakai merchant lain
