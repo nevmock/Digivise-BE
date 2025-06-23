@@ -10,18 +10,33 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProductAdsService {
+//    Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
+//            String shopId,
+//            String biddingStrategy,
+//            LocalDateTime from,
+//            LocalDateTime to,
+//            Pageable pageable,
+//            String type,
+//            String state,
+//            String productPlacement,
+//            String salesClassification,
+//            String title,
+//            Boolean hasKeywords
+//    );
     Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
-            String shopId,
-            String biddingStrategy,
-            LocalDateTime from,
-            LocalDateTime to,
-            Pageable pageable,
-            String type,
-            String state,
-            String productPlacement,
-            String salesClassification,
-            String title,
-            Boolean hasKeywords
+        String shopId,
+        String biddingStrategy,
+        LocalDateTime from1,
+        LocalDateTime to1,
+        LocalDateTime from2,
+        LocalDateTime to2,
+        Pageable pageable,
+        String type,
+        String state,
+        String productPlacement,
+        String salesClassification, // This filter can be applied post-aggregation if needed
+        String title
+        // hasKeywords is removed
     );
 
     boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas);
