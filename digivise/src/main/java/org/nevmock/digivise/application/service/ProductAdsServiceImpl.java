@@ -706,36 +706,60 @@ public class ProductAdsServiceImpl implements ProductAdsService {
     }
 
     private ProductKeywordAdsResponseDto buildKeywordDto(Document kd, Document data, KPI kpi) {
-        if (data == null) {
-            return ProductKeywordAdsResponseDto.builder().build();
-        }
-
         ProductKeywordAdsResponseDto pk = ProductKeywordAdsResponseDto.builder().build();
+
+        // Set basic fields from kd (parent document)
         pk.setId(getString(kd, "_id"));
         pk.setShopeeMerchantId(getString(kd, "shop_id"));
         pk.setCampaignId(getLong(kd, "campaign_id"));
         pk.setFrom(getString(kd, "from"));
         pk.setTo(getString(kd, "to"));
         pk.setCreatedAt(getDateTime(kd, "createdAt"));
-        pk.setKey(data != null ? getString(data, "key") : getString(kd, "key"));
-        Document metrics = data != null ? data.get("metrics", Document.class) : kd;
-        pk.setAcos(getDouble(metrics, "broad_cir"));
-        pk.setCpc(getDouble(metrics, "cpc"));
-        pk.setCost(getDouble(metrics, "cost"));
-        pk.setImpression(getDouble(metrics, "impression"));
-        pk.setClick(getDouble(metrics, "click"));
-        pk.setCtr(getDouble(metrics, "ctr"));
-
         pk.setShopeeFrom(getLong(kd, "from"));
         pk.setShopeeTo(getLong(kd, "to"));
 
-        pk.setInsight(
-                MathKt.renderInsight(
-                        MathKt.formulateRecommendation(
-                                pk.getCpc(), pk.getAcos(), pk.getClick(), kpi, null, null
-                        )
-                )
-        );
+        if (data == null) {
+            // If no data document, return empty DTO with basic fields
+            return pk;
+        }
+
+        // Set key from data document
+        pk.setKey(getString(data, "key"));
+
+        // Get metrics document - this should exist in the data document
+        Document metrics = data.get("metrics", Document.class);
+
+        if (metrics != null) {
+            // Set metrics fields
+            pk.setAcos(getDouble(metrics, "broad_cir"));
+            pk.setCpc(getDouble(metrics, "cpc"));
+            pk.setCost(getDouble(metrics, "cost"));
+            pk.setImpression(getDouble(metrics, "impression"));
+            pk.setClick(getDouble(metrics, "click"));
+            pk.setCtr(getDouble(metrics, "ctr"));
+        } else {
+            System.out.println("Warning: No metrics found for keyword: " + getString(data, "key"));
+            pk.setAcos(0.0);
+            pk.setCpc(0.0);
+            pk.setCost(0.0);
+            pk.setImpression(0.0);
+            pk.setClick(0.0);
+            pk.setCtr(0.0);
+        }
+
+        try {
+            pk.setInsight(
+                    MathKt.renderInsight(
+                            MathKt.formulateRecommendation(
+                                    pk.getCpc(), pk.getAcos(), pk.getClick(), kpi, null, null
+                            )
+                    )
+            );
+        } catch (Exception e) {
+            System.err.println("Error generating insight for keyword: " + pk.getKey() + " - " + e.getMessage());
+            pk.setInsight("No insight available");
+        }
+
         return pk;
     }
 

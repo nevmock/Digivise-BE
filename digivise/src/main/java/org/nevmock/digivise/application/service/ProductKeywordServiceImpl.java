@@ -3,7 +3,12 @@ package org.nevmock.digivise.application.service;
 import org.bson.Document;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
+import org.nevmock.digivise.domain.model.KPI;
+import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.port.in.ProductKeywordService;
+import org.nevmock.digivise.domain.port.out.KPIRepository;
+import org.nevmock.digivise.domain.port.out.MerchantRepository;
+import org.nevmock.digivise.utils.MathKt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -31,6 +36,12 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    @Autowired
+    private KPIRepository kpiRepository;
+
+    @Autowired
+    private MerchantRepository merchantRepository;
+
     @Override
     public Page<ProductKeywordResponseWrapperDto> findByRange(
             String shopId,
@@ -39,39 +50,43 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
             String name,
             Pageable pageable
     ) {
+        Merchant merchant = merchantRepository
+                .findByShopeeMerchantId(shopId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
+        KPI kpi = kpiRepository
+                .findByMerchantId(merchant.getId())
+                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
+
         List<AggregationOperation> ops = new ArrayList<>();
 
         long fromTs = from.atZone(ZoneId.systemDefault()).toEpochSecond();
 
-        
         ops.add(Aggregation.match(
                 Criteria.where("shop_id").is(shopId)
                         .and("from").gte(fromTs)
         ));
 
-        
-        ops.add(Aggregation.unwind("data"));
+        ops.add(Aggregation.unwind("data.data"));
 
-        
         if (name != null && !name.trim().isEmpty()) {
             ops.add(Aggregation.match(
-                    Criteria.where("data.key").regex(".*" + name.trim() + ".*", "i")
+                    Criteria.where("data.data.key").regex(".*" + name.trim() + ".*", "i")
             ));
         }
 
-        
         ops.add(Aggregation.project()
                 .and("uuid").as("uuid")
                 .and("shop_id").as("shopId")
+                .and("campaign_id").as("campaignId")
+                .and("type").as("type")
                 .and("createdAt").as("createdAt")
                 .and("from").as("from")
                 .and("to").as("to")
-                .and("data.key").as("keyword")
-                .and("data.ratio").as("ratio")
-                .and("data.metrics").as("metrics")
+                .and("data.data.key").as("keyword")
+                .and("data.data.ratio").as("ratio")
+                .and("data.data.metrics").as("metrics")
         );
 
-        
         FacetOperation facet = Aggregation.facet(
                         Aggregation.skip((long) pageable.getOffset()),
                         Aggregation.limit(pageable.getPageSize())
@@ -79,7 +94,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                 .and(Aggregation.count().as("totalCount")).as("countResult");
         ops.add(facet);
 
-        
+        // execute aggregation
         AggregationResults<Document> results = mongoTemplate.aggregate(
                 Aggregation.newAggregation(ops),
                 "ProductKey",
@@ -91,16 +106,12 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        
         @SuppressWarnings("unchecked")
         List<Document> docs = (List<Document>) root.get("pagedResults");
-
-        
         @SuppressWarnings("unchecked")
         List<Document> countDocs = (List<Document>) root.get("countResult");
         long total = countDocs.isEmpty() ? 0 : countDocs.get(0).getInteger("totalCount");
 
-        
         List<ProductKeywordResponseDto> dtos = docs.stream()
                 .map(doc -> {
                     Document ratioDoc = (Document) doc.get("ratio");
@@ -109,81 +120,62 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                     return ProductKeywordResponseDto.builder()
                             .uuid(doc.getString("uuid"))
                             .shopId(doc.getString("shopId"))
+                            .campaignId(getLong(doc, "campaignId"))
+                            .type(doc.getString("type"))
                             .createdAt(convertDate(doc.getDate("createdAt")))
                             .from(getLong(doc, "from"))
                             .to(getLong(doc, "to"))
-                            .campaignId(getLong(doc, "campaign_id"))
-                            .type(doc.getString("type"))
-                            .keyword(doc.getString("keyword"))
 
-                            
-                            .ratioBroadCir(getInteger(ratioDoc, "broad_cir"))
-                            .ratioBroadGmv(getInteger(ratioDoc, "broad_gmv"))
-                            .ratioBroadOrder(getInteger(ratioDoc, "broad_order"))
-                            .ratioBroadOrderAmount(getInteger(ratioDoc, "broad_order_amount"))
-                            .ratioBroadRoi(getInteger(ratioDoc, "broad_roi"))
-                            .ratioCheckout(getInteger(ratioDoc, "checkout"))
+                            .ratioBroadCir(getDouble(ratioDoc, "broad_cir"))
+                            .ratioBroadGmv(getDouble(ratioDoc, "broad_gmv"))
+                            .ratioBroadOrder(getDouble(ratioDoc, "broad_order"))
+                            .ratioBroadOrderAmount(getDouble(ratioDoc, "broad_order_amount"))
+                            .ratioBroadRoi(getDouble(ratioDoc, "broad_roi"))
+                            .ratioCheckout(getDouble(ratioDoc, "checkout"))
                             .ratioCheckoutRate(getDouble(ratioDoc, "checkout_rate"))
-                            .ratioClick(getInteger(ratioDoc, "click"))
-                            .ratioCost(getInteger(ratioDoc, "cost"))
-                            .ratioCpc(getInteger(ratioDoc, "cpc"))
-                            .ratioCpdc(getInteger(ratioDoc, "cpdc"))
-                            .ratioCr(getInteger(ratioDoc, "cr"))
-                            .ratioCtr(getInteger(ratioDoc, "ctr"))
-                            .ratioDirectCr(getInteger(ratioDoc, "direct_cr"))
-                            .ratioDirectCir(getInteger(ratioDoc, "direct_cir"))
-                            .ratioDirectGmv(getInteger(ratioDoc, "direct_gmv"))
-                            .ratioDirectOrder(getInteger(ratioDoc, "direct_order"))
-                            .ratioDirectOrderAmount(getInteger(ratioDoc, "direct_order_amount"))
-                            .ratioDirectRoi(getInteger(ratioDoc, "direct_roi"))
-                            .ratioImpression(getInteger(ratioDoc, "impression"))
-                            .ratioProductClick(getInteger(ratioDoc, "product_click"))
-                            .ratioProductImpression(getInteger(ratioDoc, "product_impression"))
-                            .ratioProductCtr(getInteger(ratioDoc, "product_ctr"))
-                            .ratioReach(getInteger(ratioDoc, "reach"))
-                            .ratioPageViews(getInteger(ratioDoc, "page_views"))
-                            .ratioUniqueVisitors(getInteger(ratioDoc, "unique_visitors"))
-                            .ratioView(getInteger(ratioDoc, "view"))
-                            .ratioCpm(getInteger(ratioDoc, "cpm"))
-                            .ratioUniqueClickUser(getInteger(ratioDoc, "unique_click_user"))
+                            .ratioClick(getDouble(ratioDoc, "click"))
+                            .ratioCost(getDouble(ratioDoc, "cost"))
+                            .ratioCpc(getDouble(ratioDoc, "cpc"))
+                            .ratioCpdc(getDouble(ratioDoc, "cpdc"))
+                            .ratioCr(getDouble(ratioDoc, "cr"))
+                            .ratioCtr(getDouble(ratioDoc, "ctr"))
+                            .ratioDirectCr(getDouble(ratioDoc, "direct_cr"))
+                            .ratioDirectCir(getDouble(ratioDoc, "direct_cir"))
+                            .ratioDirectGmv(getDouble(ratioDoc, "direct_gmv"))
+                            .ratioDirectOrder(getDouble(ratioDoc, "direct_order"))
+                            .ratioDirectOrderAmount(getDouble(ratioDoc, "direct_order_amount"))
+                            .ratioDirectRoi(getDouble(ratioDoc, "direct_roi"))
+                            .ratioImpression(getDouble(ratioDoc, "impression"))
+                            .ratioView(getDouble(ratioDoc, "view"))
 
-                            
-                            .metricsBroadCir(getInteger(metricsDoc, "broad_cir"))
-                            .metricsBroadGmv(getInteger(metricsDoc, "broad_gmv"))
+                            .metricsBroadCir(getDouble(metricsDoc, "broad_cir"))
+                            .metricsBroadGmv(getLong(metricsDoc, "broad_gmv"))
                             .metricsBroadOrder(getInteger(metricsDoc, "broad_order"))
                             .metricsBroadOrderAmount(getInteger(metricsDoc, "broad_order_amount"))
-                            .metricsBroadRoi(getInteger(metricsDoc, "broad_roi"))
+                            .metricsBroadRoi(getDouble(metricsDoc, "broad_roi"))
                             .metricsCheckout(getInteger(metricsDoc, "checkout"))
                             .metricsCheckoutRate(getDouble(metricsDoc, "checkout_rate"))
-                            .metricsClick(getInteger(metricsDoc, "click"))
+                            .metricsClick(getDouble(metricsDoc, "click"))
                             .metricsCost(getLong(metricsDoc, "cost"))
-                            .metricsCpc(getInteger(metricsDoc, "cpc"))
-                            .metricsCpdc(getInteger(metricsDoc, "cpdc"))
-                            .metricsCr(getInteger(metricsDoc, "cr"))
+                            .metricsCr(getDouble(metricsDoc, "cr"))
                             .metricsCtr(getDouble(metricsDoc, "ctr"))
-                            .metricsDirectCr(getInteger(metricsDoc, "direct_cr"))
-                            .metricsDirectCir(getInteger(metricsDoc, "direct_cir"))
-                            .metricsDirectGmv(getInteger(metricsDoc, "direct_gmv"))
+                            .metricsDirectGmv(getLong(metricsDoc, "direct_gmv"))
                             .metricsDirectOrder(getInteger(metricsDoc, "direct_order"))
-                            .metricsDirectOrderAmount(getInteger(metricsDoc, "direct_order_amount"))
-                            .metricsDirectRoi(getInteger(metricsDoc, "direct_roi"))
+                            .metricsDirectRoi(getDouble(metricsDoc, "direct_roi"))
                             .metricsImpression(getInteger(metricsDoc, "impression"))
                             .metricsAvgRank(getInteger(metricsDoc, "avg_rank"))
-                            .metricsProductClick(getInteger(metricsDoc, "product_click"))
-                            .metricsProductImpression(getInteger(metricsDoc, "product_impression"))
-                            .metricsProductCtr(getInteger(metricsDoc, "product_ctr"))
-                            .metricsLocationInAds(getInteger(metricsDoc, "location_in_ads"))
-                            .metricsReach(getInteger(metricsDoc, "reach"))
-                            .metricsPageViews(getInteger(metricsDoc, "page_views"))
-                            .metricsUniqueVisitors(getInteger(metricsDoc, "unique_visitors"))
-                            .metricsView(getInteger(metricsDoc, "view"))
-                            .metricsCpm(getInteger(metricsDoc, "cpm"))
-                            .metricsUniqueClickUser(getInteger(metricsDoc, "unique_click_user"))
+                            .metricsView(getLong(metricsDoc, "view"))
+                            .keyword(doc.getString("keyword"))
+                            .insight(MathKt.renderInsight(
+                                    MathKt.formulateRecommendation(
+                                            getDouble(metricsDoc, "cpc"), getDouble(metricsDoc, "broad_cir"), getDouble(metricsDoc, "click"), kpi, null, null
+                                    )
+
+                            ))
                             .build();
                 })
                 .collect(Collectors.toList());
 
-        
         Map<String, List<ProductKeywordResponseDto>> grouped = dtos.stream()
                 .collect(Collectors.groupingBy(ProductKeywordResponseDto::getKeyword));
 
@@ -206,28 +198,21 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     private Integer getInteger(Document doc, String key) {
         if (doc == null) return null;
         Object v = doc.get(key);
-        if (v instanceof Number) {
-            return ((Number) v).intValue();
-        }
-        return null;
-    }
-
-    private Double getDouble(Document doc, String key) {
-        if (doc == null) return null;
-        Object v = doc.get(key);
-        if (v instanceof Number) {
-            return ((Number) v).doubleValue();
-        }
+        if (v instanceof Number) return ((Number) v).intValue();
         return null;
     }
 
     private Long getLong(Document doc, String key) {
         if (doc == null) return null;
         Object v = doc.get(key);
-        if (v instanceof Number) {
-            return ((Number) v).longValue();
-        }
+        if (v instanceof Number) return ((Number) v).longValue();
         return null;
     }
 
+    private Double getDouble(Document doc, String key) {
+        if (doc == null) return null;
+        Object v = doc.get(key);
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        return null;
+    }
 }

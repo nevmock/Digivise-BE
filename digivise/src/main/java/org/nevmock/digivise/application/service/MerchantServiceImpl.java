@@ -232,8 +232,8 @@ public class MerchantServiceImpl implements MerchantService {
     @Override
     public MerchantInfoResponseDto otpLoginMerchant(String username, UUID merchantId, String otpCode) {
 
-        User user = Objects.requireNonNull(getCurrentUser(userRepository))
-                .orElseThrow(() -> new RuntimeException("User not found!"));
+        User user = Objects.requireNonNull(getCurrentUser(userRepository)).orElse(null);
+        if (user == null) return null;
 
         HttpClient httpClient = HttpClient.newHttpClient();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -250,42 +250,48 @@ public class MerchantServiceImpl implements MerchantService {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("Failed to OTP-login merchant: " + response.body());
+                return null; // gagal login
             }
 
             MerchantInfoResponseDto result = objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
+            String newShopeeId = String.valueOf(result.getData().getData().getShopId());
 
-            Optional<Merchant> merchant = merchantRepository.findById(merchantId);
+            Optional<Merchant> merchantOpt = merchantRepository.findById(merchantId);
+            if (merchantOpt.isEmpty()) return null;
 
-            Merchant merchantToUpdate = merchant.get();
+            Merchant merchantToUpdate = merchantOpt.get();
 
-            if (merchant == null) {
-                throw new RuntimeException("Merchant not found with ID: " + merchantId);
+            // Jika merchant sudah punya Shopee ID yang sama, langsung return
+            if (merchantToUpdate.getMerchantShopeeId() != null &&
+                    merchantToUpdate.getMerchantShopeeId().equals(newShopeeId)) {
+
+                user.setActiveMerchant(merchantToUpdate);
+                userRepository.save(user);
+                return result;
             }
 
-            if (merchantToUpdate.getMerchantShopeeId() != null) {
-                if (merchantToUpdate.getMerchantShopeeId().equals(String.valueOf(result.getData().getData().getShopId()))) {
-                    user.setActiveMerchant(merchantToUpdate);
-                    userRepository.save(user);
+            // Cek kalau Shopee ID sudah dipakai merchant lain
+            Optional<Merchant> existingShopee = merchantRepository.findByShopeeMerchantId(newShopeeId);
 
-                    return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
-                }
+            if (existingShopee.isPresent() && !existingShopee.get().getId().equals(merchantId)) {
+                // Sudah dipakai merchant lain, skip update Shopee ID
+                // Bisa log info di sini kalau perlu
+            } else {
+                // Aman untuk set Shopee ID baru
+                merchantToUpdate.setMerchantShopeeId(newShopeeId);
             }
 
             merchantToUpdate.setMerchantName(result.getData().getData().getName());
-            merchantToUpdate.setPassword(password);
-            merchantToUpdate.setMerchantShopeeId(String.valueOf(result.getData().getData().getShopId()));
-
+            merchantToUpdate.setPassword(password); // Pastikan variable `password` terisi valid
             merchantRepository.save(merchantToUpdate);
 
             user.setActiveMerchant(merchantToUpdate);
-
             userRepository.save(user);
 
-            return objectMapper.readValue(response.body(), MerchantInfoResponseDto.class);
+            return result;
 
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("Failed to OTP-login merchant", e);
+            return null;
         }
     }
 }

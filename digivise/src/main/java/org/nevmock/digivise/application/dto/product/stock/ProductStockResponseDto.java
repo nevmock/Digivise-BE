@@ -50,20 +50,17 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductStockResponseDto {
-    // Top-level fields
     private String id;
     private String uuid;
     private LocalDateTime createdAt;
     private String shopId;
 
-    // Product data fields
     private Long productId;
     private String name;
     private Integer status;
     private String coverImage;
     private String parentSku;
 
-    // Price detail
     private Double priceMin;
     private Double priceMax;
     private Boolean hasDiscount;
@@ -72,7 +69,6 @@ public class ProductStockResponseDto {
     private Double sellingPriceMin;
     private Double sellingPriceMax;
 
-    // Stock detail
     private Integer totalAvailableStock;
     private Integer totalSellerStock;
     private Integer totalShopeeStock;
@@ -84,16 +80,13 @@ public class ProductStockResponseDto {
     private Integer advancedInTransitStock;
     private Integer enableStockReminderStatus;
 
-    // Promotion
     private Boolean wholesale;
     private Boolean hasBundleDeal;
 
-    // Statistics
     private Integer viewCount;
     private Integer likedCount;
     private Integer soldCount;
 
-    // Tag
     private Boolean isVirtualSku;
     private Boolean unlist;
     private Boolean hasDiscountTag;
@@ -106,20 +99,16 @@ public class ProductStockResponseDto {
     private Boolean memberExclusive;
     private Boolean isIprAppealing;
 
-    // Boost info
     private Integer boostEntryStatus;
     private Boolean showBoostHistory;
     private Long boostCampaignId;
 
-    // Timestamps
     private Long modifyTime;
     private Long createTime;
 
-    // Other fields
     private Long scheduledPublishTime;
     private Long mtskuItemId;
 
-    // Appeal info
     private Integer appealOpt;
     private String canNotAppealTransifyKey;
     private Long referenceId;
