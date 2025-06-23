@@ -129,6 +129,9 @@ import java.time.LocalDateTime;
 @Getter
 @Builder(toBuilder = true)
 public class ProductAdsResponseDto {
+    private String shopeeFrom;
+    private String shopeeTo;
+
     private Long campaignId;
     private Double cost;
     private Double dailyBudget;

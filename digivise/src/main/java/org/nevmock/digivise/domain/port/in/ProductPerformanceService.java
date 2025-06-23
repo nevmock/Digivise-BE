@@ -7,10 +7,12 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 
 public interface ProductPerformanceService {
-    public Page<ProductPerformanceWrapperDto> findByRange(
+    Page<ProductPerformanceWrapperDto> findByRange(
             String shopId,
-            LocalDateTime from,
-            LocalDateTime to,
+            LocalDateTime from1,
+            LocalDateTime to1,
+            LocalDateTime from2,
+            LocalDateTime to2,
             String name,
             Pageable pageable
     );

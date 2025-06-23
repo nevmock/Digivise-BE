@@ -8,6 +8,18 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
+//@Data
+//@NoArgsConstructor
+//@AllArgsConstructor
+//@Builder
+//public class ProductPerformanceWrapperDto {
+//    private String shopId;
+//    private Long productId;
+//    private LocalDateTime from;
+//    private LocalDateTime to;
+//    private List<ProductPerformanceResponseDto> data;
+//}
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,7 +27,14 @@ import java.util.List;
 public class ProductPerformanceWrapperDto {
     private String shopId;
     private Long productId;
-    private LocalDateTime from;
-    private LocalDateTime to;
+
+    // First period range
+    private LocalDateTime from1;
+    private LocalDateTime to1;
+
+    // Second period range (for comparison)
+    private LocalDateTime from2;
+    private LocalDateTime to2;
+
     private List<ProductPerformanceResponseDto> data;
 }
