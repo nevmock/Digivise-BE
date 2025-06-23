@@ -283,9 +283,12 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         // Keep the original method for backward compatibility
         List<AggregationOperation> ops = new ArrayList<>();
 
+        long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
+        long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
+
         ops.add(Aggregation.match(
                 Criteria.where("shop_id").is(shopId)
-                        .and("createdAt").gte(from).lte(to)
+                        .and("from").gte(fromTimestamp).lte(toTimestamp)
         ));
 
         ops.add(Aggregation.unwind("data"));
@@ -443,10 +446,13 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
 
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Match criteria
-        Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
-                .and("createdAt").gte(from).lte(to);
-        ops.add(Aggregation.match(matchCriteria));
+        long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
+        long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
+
+        ops.add(Aggregation.match(
+                Criteria.where("shop_id").is(shopId)
+                        .and("from").gte(fromTimestamp).lte(toTimestamp)
+        ));
         ops.add(Aggregation.unwind("data"));
 
         // Filter by name if provided
@@ -597,5 +603,61 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             return ((Date) v).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         }
         return null;
+    }
+
+    // Tambahkan method debug ini ke ProductPerformanceServiceImpl untuk test
+    public void debugProductPerformanceData(String shopId) {
+        System.out.println("=== SIMPLE DEBUG ===");
+
+        // 1. Cek total documents
+        long total = mongoTemplate.count(
+                org.springframework.data.mongodb.core.query.Query.query(
+                        Criteria.where("shop_id").is(shopId)
+                ),
+                "ProductPerformance"
+        );
+        System.out.println("Total documents with shop_id " + shopId + ": " + total);
+
+        // 2. Get sample document
+        Document sample = mongoTemplate.findOne(
+                org.springframework.data.mongodb.core.query.Query.query(
+                        Criteria.where("shop_id").is(shopId)
+                ).limit(1),
+                Document.class,
+                "ProductPerformance"
+        );
+
+        if (sample != null) {
+            System.out.println("Sample document structure:");
+            System.out.println(sample.toJson());
+        } else {
+            System.out.println("No documents found for shop_id: " + shopId);
+        }
+
+        // 3. Cek field yang ada
+        if (sample != null) {
+            System.out.println("Available fields: " + sample.keySet());
+
+            // Cek apakah ada field 'data'
+            if (sample.containsKey("data")) {
+                Object dataField = sample.get("data");
+                System.out.println("Data field type: " + dataField.getClass().getSimpleName());
+
+                if (dataField instanceof List) {
+                    List<?> dataList = (List<?>) dataField;
+                    System.out.println("Data array size: " + dataList.size());
+                    if (!dataList.isEmpty()) {
+                        System.out.println("First data item: " + dataList.get(0));
+                    }
+                }
+            }
+
+            // Cek field createdAt
+            if (sample.containsKey("createdAt")) {
+                Object createdAt = sample.get("createdAt");
+                System.out.println("CreatedAt field type: " + createdAt.getClass().getSimpleName());
+                System.out.println("CreatedAt value: " + createdAt);
+            }
+        }
     }
 }
