@@ -56,6 +56,9 @@ public class ProductPerformanceResponseDto {
     private String image;
     private Integer status;
 
+    private Long shopeeFrom;
+    private Long shopeeTo;
+
     // Core metrics
     private Long uv;
     private Long pv;

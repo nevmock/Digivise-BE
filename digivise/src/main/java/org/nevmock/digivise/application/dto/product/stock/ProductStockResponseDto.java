@@ -44,6 +44,7 @@ package org.nevmock.digivise.application.dto.product.stock;
 
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -113,4 +114,6 @@ public class ProductStockResponseDto {
     private String canNotAppealTransifyKey;
     private Long referenceId;
     private Integer appealStatus;
+
+    private List<ModelStockDto> modelStocks;
 }
