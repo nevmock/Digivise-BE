@@ -140,7 +140,7 @@ public class ProductAdsResponseDto {
     private Double ctr;
     private Double impression;
     private Double click;
-    private Double gmv;
+    private Double broadGmv;
     private Double directOrder;
     private Double directOrderAmount;
     private Double directGmv;
@@ -167,6 +167,23 @@ public class ProductAdsResponseDto {
     private Double roasComparison;
     private Double crComparison;
 
+    private Double costRatio;
+    private Double dailyBudgetRatio;
+    private Double cpcRatio;
+    private Double acosRatio;
+    private Double ctrRatio;
+    private Double impressionRatio;
+    private Double clickRatio;
+    private Double gmvRatio;
+    private Double directOrderRatio;
+    private Double directOrderAmountRatio;
+    private Double directGmvRatio;
+    private Double directRoiRatio;
+    private Double directCirRatio;
+    private Double directCrRatio;
+    private Double roasRatio;
+    private Double crRatio;
+
     private String salesClassification;
     private String biddingStrategy;
     private String productPlacement;
@@ -175,4 +192,8 @@ public class ProductAdsResponseDto {
 
     private String insight;
     private String title;
+
+    private Double calculatedRoas;
+    private String insightRoas;
+    private Boolean hasCustomRoas;
 }

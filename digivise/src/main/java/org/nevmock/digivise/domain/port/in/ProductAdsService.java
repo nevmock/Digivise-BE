@@ -39,5 +39,5 @@ public interface ProductAdsService {
         // hasKeywords is removed
     );
 
-    boolean insertCustomRoasForToday(String shopId, Long campaignId, Double customRoas);
+    boolean insertCustomRoas(String shopId, Long campaignId, Double customRoas, Long from, Long to);
 }

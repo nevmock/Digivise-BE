@@ -94,10 +94,6 @@ import java.util.Map;
 public class ProductAdsController {
     private final ProductAdsService productAdsService;
 
-    /**
-     * Endpoint to get aggregated and compared product ads data between two date ranges.
-     * The path is changed from /daily to /comparison to better reflect its function.
-     */
     @GetMapping("")
     public ResponseEntity<Page<ProductAdsResponseWrapperDto>> getProductAdsComparison(
             @RequestParam
@@ -131,11 +127,8 @@ public class ProductAdsController {
             @RequestParam(required = false)
             String title
     ) {
-        // PageRequest is still used as the service returns a Page object,
-        // even if it only contains one item.
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        // Call the updated service method with the new parameters
         return ResponseEntity.ok(productAdsService.findByRangeAggTotal(
                 shopId,
                 biddingStrategy,
@@ -156,9 +149,11 @@ public class ProductAdsController {
     public ResponseEntity<Map<String, Object>> insertCustomRoas(
             @RequestParam String shopId,
             @RequestParam Long campaignId,
-            @RequestParam Double customRoas
+            @RequestParam Double customRoas,
+            @RequestParam Long from,
+            @RequestParam Long to
     ) {
-        boolean success = productAdsService.insertCustomRoasForToday(shopId, campaignId, customRoas);
+        boolean success = productAdsService.insertCustomRoas(shopId, campaignId, customRoas, from, to);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
