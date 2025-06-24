@@ -15,7 +15,12 @@ import java.util.List;
 public class ProductStockResponseWrapperDto {
     private String shopId;
     private Long productId;
-    private LocalDateTime from;
-    private LocalDateTime to;
+
+    private LocalDateTime from1;
+    private LocalDateTime to1;
+
+    private LocalDateTime from2;
+    private LocalDateTime to2;
+
     private List<ProductStockResponseDto> data;
 }

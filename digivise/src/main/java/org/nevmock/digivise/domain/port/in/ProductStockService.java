@@ -23,4 +23,14 @@ public interface ProductStockService {
             String name,
             Pageable pageable
     );
+
+    Page<ProductStockResponseWrapperDto> findByRange(
+            String shopId,
+            LocalDateTime from1,
+            LocalDateTime to1,
+            LocalDateTime from2,
+            LocalDateTime to2,
+            String name,
+            Pageable pageable
+    );
 }
