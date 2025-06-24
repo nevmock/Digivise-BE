@@ -1,231 +1,8 @@
-//package org.nevmock.digivise.application.service;
-//
-//import org.bson.Document;
-//import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
-//import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
-//import org.nevmock.digivise.domain.model.KPI;
-//import org.nevmock.digivise.domain.model.Merchant;
-//import org.nevmock.digivise.domain.port.in.ProductKeywordService;
-//import org.nevmock.digivise.domain.port.out.KPIRepository;
-//import org.nevmock.digivise.domain.port.out.MerchantRepository;
-//import org.nevmock.digivise.utils.MathKt;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.data.domain.Page;
-//import org.springframework.data.domain.PageImpl;
-//import org.springframework.data.domain.Pageable;
-//import org.springframework.data.mongodb.core.MongoTemplate;
-//import org.springframework.data.mongodb.core.aggregation.Aggregation;
-//import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
-//import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-//import org.springframework.data.mongodb.core.aggregation.FacetOperation;
-//import org.springframework.data.mongodb.core.query.Criteria;
-//import org.springframework.stereotype.Service;
-//
-//import java.time.LocalDateTime;
-//import java.time.ZoneId;
-//import java.util.ArrayList;
-//import java.util.Collections;
-//import java.util.Date;
-//import java.util.List;
-//import java.util.Map;
-//import java.util.stream.Collectors;
-//
-//@Service
-//public class ProductKeywordServiceImpl implements ProductKeywordService {
-//
-//    @Autowired
-//    private MongoTemplate mongoTemplate;
-//
-//    @Autowired
-//    private KPIRepository kpiRepository;
-//
-//    @Autowired
-//    private MerchantRepository merchantRepository;
-//
-//    @Override
-//    public Page<ProductKeywordResponseWrapperDto> findByRange(
-//            String shopId,
-//            LocalDateTime from,
-//            LocalDateTime to,
-//            String name,
-//            Long campaignId,
-//            Pageable pageable
-//    ) {
-//        Merchant merchant = merchantRepository
-//                .findByShopeeMerchantId(shopId)
-//                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
-//        KPI kpi = kpiRepository
-//                .findByMerchantId(merchant.getId())
-//                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
-//
-//        List<AggregationOperation> ops = new ArrayList<>();
-//
-//        long fromTs = from.atZone(ZoneId.systemDefault()).toEpochSecond();
-//
-//        ops.add(Aggregation.match(
-//                Criteria.where("shop_id").is(shopId)
-//                        .and("from").gte(fromTs)
-//        ));
-//
-//        if (campaignId != null) {
-//            ops.add(Aggregation.match(
-//                    Criteria.where("campaign_id").is(campaignId)
-//            ));
-//        }
-//
-//        ops.add(Aggregation.unwind("data.data"));
-//
-//        if (name != null && !name.trim().isEmpty()) {
-//            ops.add(Aggregation.match(
-//                    Criteria.where("data.data.key").regex(".*" + name.trim() + ".*", "i")
-//            ));
-//        }
-//
-//        ops.add(Aggregation.project()
-//                .and("uuid").as("uuid")
-//                .and("shop_id").as("shopId")
-//                .and("campaign_id").as("campaignId")
-//                .and("type").as("type")
-//                .and("createdAt").as("createdAt")
-//                .and("from").as("from")
-//                .and("to").as("to")
-//                .and("data.data.key").as("keyword")
-//                .and("data.data.ratio").as("ratio")
-//                .and("data.data.metrics").as("metrics")
-//        );
-//
-//        FacetOperation facet = Aggregation.facet(
-//                        Aggregation.skip((long) pageable.getOffset()),
-//                        Aggregation.limit(pageable.getPageSize())
-//                ).as("pagedResults")
-//                .and(Aggregation.count().as("totalCount")).as("countResult");
-//        ops.add(facet);
-//
-//        // execute aggregation
-//        AggregationResults<Document> results = mongoTemplate.aggregate(
-//                Aggregation.newAggregation(ops),
-//                "ProductKey",
-//                Document.class
-//        );
-//
-//        Document root = results.getMappedResults().stream().findFirst().orElse(null);
-//        if (root == null) {
-//            return new PageImpl<>(Collections.emptyList(), pageable, 0);
-//        }
-//
-//        @SuppressWarnings("unchecked")
-//        List<Document> docs = (List<Document>) root.get("pagedResults");
-//        @SuppressWarnings("unchecked")
-//        List<Document> countDocs = (List<Document>) root.get("countResult");
-//        long total = countDocs.isEmpty() ? 0 : countDocs.get(0).getInteger("totalCount");
-//
-//        List<ProductKeywordResponseDto> dtos = docs.stream()
-//                .map(doc -> {
-//                    Document ratioDoc = (Document) doc.get("ratio");
-//                    Document metricsDoc = (Document) doc.get("metrics");
-//
-//                    return ProductKeywordResponseDto.builder()
-//                            .uuid(doc.getString("uuid"))
-//                            .shopId(doc.getString("shopId"))
-//                            .campaignId(getLong(doc, "campaignId"))
-//                            .type(doc.getString("type"))
-//                            .createdAt(convertDate(doc.getDate("createdAt")))
-//                            .from(getLong(doc, "from"))
-//                            .to(getLong(doc, "to"))
-//
-//                            .ratioBroadCir(getDouble(ratioDoc, "broad_cir"))
-//                            .ratioBroadGmv(getDouble(ratioDoc, "broad_gmv"))
-//                            .ratioBroadOrder(getDouble(ratioDoc, "broad_order"))
-//                            .ratioBroadOrderAmount(getDouble(ratioDoc, "broad_order_amount"))
-//                            .ratioBroadRoi(getDouble(ratioDoc, "broad_roi"))
-//                            .ratioCheckout(getDouble(ratioDoc, "checkout"))
-//                            .ratioCheckoutRate(getDouble(ratioDoc, "checkout_rate"))
-//                            .ratioClick(getDouble(ratioDoc, "click"))
-//                            .ratioCost(getDouble(ratioDoc, "cost"))
-//                            .ratioCpc(getDouble(ratioDoc, "cpc"))
-//                            .ratioCpdc(getDouble(ratioDoc, "cpdc"))
-//                            .ratioCr(getDouble(ratioDoc, "cr"))
-//                            .ratioCtr(getDouble(ratioDoc, "ctr"))
-//                            .ratioDirectCr(getDouble(ratioDoc, "direct_cr"))
-//                            .ratioDirectCir(getDouble(ratioDoc, "direct_cir"))
-//                            .ratioDirectGmv(getDouble(ratioDoc, "direct_gmv"))
-//                            .ratioDirectOrder(getDouble(ratioDoc, "direct_order"))
-//                            .ratioDirectOrderAmount(getDouble(ratioDoc, "direct_order_amount"))
-//                            .ratioDirectRoi(getDouble(ratioDoc, "direct_roi"))
-//                            .ratioImpression(getDouble(ratioDoc, "impression"))
-//                            .ratioView(getDouble(ratioDoc, "view"))
-//
-//                            .metricsBroadCir(getDouble(metricsDoc, "broad_cir"))
-//                            .metricsBroadGmv(getLong(metricsDoc, "broad_gmv"))
-//                            .metricsBroadOrder(getInteger(metricsDoc, "broad_order"))
-//                            .metricsBroadOrderAmount(getInteger(metricsDoc, "broad_order_amount"))
-//                            .metricsBroadRoi(getDouble(metricsDoc, "broad_roi"))
-//                            .metricsCheckout(getInteger(metricsDoc, "checkout"))
-//                            .metricsCheckoutRate(getDouble(metricsDoc, "checkout_rate"))
-//                            .metricsClick(getDouble(metricsDoc, "click"))
-//                            .metricsCost(getLong(metricsDoc, "cost"))
-//                            .metricsCr(getDouble(metricsDoc, "cr"))
-//                            .metricsCtr(getDouble(metricsDoc, "ctr"))
-//                            .metricsDirectGmv(getLong(metricsDoc, "direct_gmv"))
-//                            .metricsDirectOrder(getInteger(metricsDoc, "direct_order"))
-//                            .metricsDirectRoi(getDouble(metricsDoc, "direct_roi"))
-//                            .metricsImpression(getInteger(metricsDoc, "impression"))
-//                            .metricsAvgRank(getInteger(metricsDoc, "avg_rank"))
-//                            .metricsView(getLong(metricsDoc, "view"))
-//                            .keyword(doc.getString("keyword"))
-//                            .insight(MathKt.renderInsight(
-//                                    MathKt.formulateRecommendation(
-//                                            getDouble(metricsDoc, "cpc"), getDouble(metricsDoc, "broad_cir"), getDouble(metricsDoc, "click"), kpi, null, null
-//                                    )
-//
-//                            ))
-//                            .build();
-//                })
-//                .collect(Collectors.toList());
-//
-//        Map<String, List<ProductKeywordResponseDto>> grouped = dtos.stream()
-//                .collect(Collectors.groupingBy(ProductKeywordResponseDto::getKeyword));
-//
-//        List<ProductKeywordResponseWrapperDto> wrappers = grouped.entrySet().stream()
-//                .map(e -> ProductKeywordResponseWrapperDto.builder()
-//                        .shopId(shopId)
-//                        .from(from)
-//                        .to(to)
-//                        .data(e.getValue())
-//                        .build())
-//                .collect(Collectors.toList());
-//
-//        return new PageImpl<>(wrappers, pageable, total);
-//    }
-//
-//    private LocalDateTime convertDate(Date date) {
-//        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-//    }
-//
-//    private Integer getInteger(Document doc, String key) {
-//        if (doc == null) return null;
-//        Object v = doc.get(key);
-//        if (v instanceof Number) return ((Number) v).intValue();
-//        return null;
-//    }
-//
-//    private Long getLong(Document doc, String key) {
-//        if (doc == null) return null;
-//        Object v = doc.get(key);
-//        if (v instanceof Number) return ((Number) v).longValue();
-//        return null;
-//    }
-//
-//    private Double getDouble(Document doc, String key) {
-//        if (doc == null) return null;
-//        Object v = doc.get(key);
-//        if (v instanceof Number) return ((Number) v).doubleValue();
-//        return null;
-//    }
-//}
 package org.nevmock.digivise.application.service;
 
 import org.bson.Document;
+import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
+import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseDto;
 import org.nevmock.digivise.application.dto.product.keyword.ProductKeywordResponseWrapperDto;
 import org.nevmock.digivise.domain.model.KPI;
@@ -289,6 +66,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                 (existing, replacement) -> existing
         ));
 
+
         if (period1DataList.isEmpty()) {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
@@ -319,16 +97,20 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     }
 
     private List<ProductKeywordResponseDto> getAggregatedDataByCampaignForRange(
-            String shopId, LocalDateTime from, LocalDateTime to, String keywordFilter, Long campaignIdFilter
+            String shopId,
+            LocalDateTime from,
+            LocalDateTime to,
+            String keywordFilter,
+            Long campaignIdFilter
     ) {
         long fromTs = from.atZone(ZoneId.systemDefault()).toEpochSecond();
-        long toTs = to.atZone(ZoneId.systemDefault()).toEpochSecond();
+        long toTs   = to.atZone(ZoneId.systemDefault()).toEpochSecond();
 
         List<AggregationOperation> ops = new ArrayList<>();
 
-        Criteria criteria = Criteria.where("shop_id").is(shopId)
+        Criteria baseCriteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTs).lte(toTs);
-        ops.add(Aggregation.match(criteria));
+        ops.add(Aggregation.match(baseCriteria));
 
         if (campaignIdFilter != null) {
             ops.add(Aggregation.match(Criteria.where("campaign_id").is(campaignIdFilter)));
@@ -338,79 +120,86 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         ops.add(Aggregation.unwind("data.data"));
 
         if (keywordFilter != null && !keywordFilter.isEmpty()) {
-            ops.add(Aggregation.match(Criteria.where("data.data.key").regex(keywordFilter, "i")));
+            ops.add(Aggregation.match(
+                    Criteria.where("data.data.key").regex(keywordFilter, "i")
+            ));
         }
 
-        GroupOperation group = Aggregation.group("campaign_id")
-                .avg("data.data.ratio.broad_cir").as("ratioBroadCir")
-                .avg("data.data.ratio.broad_gmv").as("ratioBroadGmv")
-                .avg("data.data.ratio.broad_order").as("ratioBroadOrder")
-                .avg("data.data.ratio.broad_order_amount").as("ratioBroadOrderAmount")
-                .avg("data.data.ratio.broad_roi").as("ratioBroadRoi")
-                .avg("data.data.ratio.checkout").as("ratioCheckout")
-                .avg("data.data.ratio.checkout_rate").as("ratioCheckoutRate")
-                .avg("data.data.ratio.click").as("ratioClick")
-                .avg("data.data.ratio.cost").as("ratioCost")
-                .avg("data.data.ratio.cpc").as("ratioCpc")
-                .avg("data.data.ratio.cpdc").as("ratioCpdc")
-                .avg("data.data.ratio.cr").as("ratioCr")
-                .avg("data.data.ratio.ctr").as("ratioCtr")
-                .avg("data.data.ratio.direct_cr").as("ratioDirectCr")
-                .avg("data.data.ratio.direct_cir").as("ratioDirectCir")
-                .avg("data.data.ratio.direct_gmv").as("ratioDirectGmv")
-                .avg("data.data.ratio.direct_order").as("ratioDirectOrder")
-                .avg("data.data.ratio.direct_order_amount").as("ratioDirectOrderAmount")
-                .avg("data.data.ratio.direct_roi").as("ratioDirectRoi")
-                .avg("data.data.ratio.impression").as("ratioImpression")
-                .avg("data.data.ratio.product_click").as("ratioProductClick")
-                .avg("data.data.ratio.product_impression").as("ratioProductImpression")
-                .avg("data.data.ratio.product_ctr").as("ratioProductCtr")
-                .avg("data.data.ratio.reach").as("ratioReach")
-                .avg("data.data.ratio.page_views").as("ratioPageViews")
-                .avg("data.data.ratio.unique_visitors").as("ratioUniqueVisitors")
-                .avg("data.data.ratio.view").as("ratioView")
-                .avg("data.data.ratio.cpm").as("ratioCpm")
-                .avg("data.data.ratio.unique_click_user").as("ratioUniqueClickUser")
+        ops.add(Aggregation.project()
+                .and("campaign_id").as("campaignId")
+                .and("data.data.key").as("keyword")
+                .and("data.data.ratio").as("ratio")
+                .and("data.data.metrics").as("metrics")
+        );
 
-                // Metrics: Sum for absolute values
-                .sum("data.data.metrics.broad_cir").as("metricsBroadCir")
-                .sum("data.data.metrics.broad_gmv").as("metricsBroadGmv")
-                .sum("data.data.metrics.broad_order").as("metricsBroadOrder")
-                .sum("data.data.metrics.broad_order_amount").as("metricsBroadOrderAmount")
-                .sum("data.data.metrics.checkout").as("metricsCheckout")
-                .sum("data.data.metrics.click").as("metricsClick")
-                .sum("data.data.metrics.cost").as("metricsCost")
-                .sum("data.data.metrics.direct_gmv").as("metricsDirectGmv")
-                .sum("data.data.metrics.direct_order").as("metricsDirectOrder")
-                .sum("data.data.metrics.direct_order_amount").as("metricsDirectOrderAmount")
-                .sum("data.data.metrics.impression").as("metricsImpression")
-                .sum("data.data.metrics.product_click").as("metricsProductClick")
-                .sum("data.data.metrics.product_impression").as("metricsProductImpression")
-                .sum("data.data.metrics.reach").as("metricsReach")
-                .sum("data.data.metrics.page_views").as("metricsPageViews")
-                .sum("data.data.metrics.unique_visitors").as("metricsUniqueVisitors")
-                .sum("data.data.metrics.view").as("metricsView")
-                .sum("data.data.metrics.unique_click_user").as("metricsUniqueClickUser")
+        GroupOperation group = Aggregation.group("campaignId", "keyword")
+                .avg("ratio.broad_cir").as("ratioBroadCir")
+                .avg("ratio.broad_gmv").as("ratioBroadGmv")
+                .avg("ratio.broad_order").as("ratioBroadOrder")
+                .avg("ratio.broad_order_amount").as("ratioBroadOrderAmount")
+                .avg("ratio.broad_roi").as("ratioBroadRoi")
+                .avg("ratio.checkout").as("ratioCheckout")
+                .avg("ratio.checkout_rate").as("ratioCheckoutRate")
+                .avg("ratio.click").as("ratioClick")
+                .avg("ratio.cost").as("ratioCost")
+                .avg("ratio.cpc").as("ratioCpc")
+                .avg("ratio.cpdc").as("ratioCpdc")
+                .avg("ratio.cr").as("ratioCr")
+                .avg("ratio.ctr").as("ratioCtr")
+                .avg("ratio.direct_cr").as("ratioDirectCr")
+                .avg("ratio.direct_cir").as("ratioDirectCir")
+                .avg("ratio.direct_gmv").as("ratioDirectGmv")
+                .avg("ratio.direct_order").as("ratioDirectOrder")
+                .avg("ratio.direct_order_amount").as("ratioDirectOrderAmount")
+                .avg("ratio.direct_roi").as("ratioDirectRoi")
+                .avg("ratio.impression").as("ratioImpression")
+                .avg("ratio.product_click").as("ratioProductClick")
+                .avg("ratio.product_impression").as("ratioProductImpression")
+                .avg("ratio.product_ctr").as("ratioProductCtr")
+                .avg("ratio.reach").as("ratioReach")
+                .avg("ratio.page_views").as("ratioPageViews")
+                .avg("ratio.unique_visitors").as("ratioUniqueVisitors")
+                .avg("ratio.view").as("ratioView")
+                .avg("ratio.cpm").as("ratioCpm")
+                .avg("ratio.unique_click_user").as("ratioUniqueClickUser")
 
-                // Metrics: Average for ratios
-                .avg("data.data.metrics.broad_roi").as("metricsBroadRoi")
-                .avg("data.data.metrics.checkout_rate").as("metricsCheckoutRate")
-                .avg("data.data.metrics.cpc").as("metricsCpc")
-                .avg("data.data.metrics.cpdc").as("metricsCpdc")
-                .avg("data.data.metrics.cr").as("metricsCr")
-                .avg("data.data.metrics.ctr").as("metricsCtr")
-                .avg("data.data.metrics.direct_cr").as("metricsDirectCr")
-                .avg("data.data.metrics.direct_cir").as("metricsDirectCir")
-                .avg("data.data.metrics.direct_roi").as("metricsDirectRoi")
-                .avg("data.data.metrics.avg_rank").as("metricsAvgRank")
-                .avg("data.data.metrics.product_ctr").as("metricsProductCtr")
-                .avg("data.data.metrics.location_in_ads").as("metricsLocationInAds")
-                .avg("data.data.metrics.cpm").as("metricsCpm");
+                .sum("metrics.broad_cir").as("metricsBroadCir")
+                .sum("metrics.broad_gmv").as("metricsBroadGmv")
+                .sum("metrics.broad_order").as("metricsBroadOrder")
+                .sum("metrics.broad_order_amount").as("metricsBroadOrderAmount")
+                .sum("metrics.checkout").as("metricsCheckout")
+                .sum("metrics.click").as("metricsClick")
+                .sum("metrics.cost").as("metricsCost")
+                .sum("metrics.direct_gmv").as("metricsDirectGmv")
+                .sum("metrics.direct_order").as("metricsDirectOrder")
+                .sum("metrics.direct_order_amount").as("metricsDirectOrderAmount")
+                .sum("metrics.impression").as("metricsImpression")
+                .sum("metrics.product_click").as("metricsProductClick")
+                .sum("metrics.product_impression").as("metricsProductImpression")
+                .sum("metrics.reach").as("metricsReach")
+                .sum("metrics.page_views").as("metricsPageViews")
+                .sum("metrics.unique_visitors").as("metricsUniqueVisitors")
+                .sum("metrics.view").as("metricsView")
+                .sum("metrics.unique_click_user").as("metricsUniqueClickUser")
+
+                .avg("metrics.broad_roi").as("metricsBroadRoi")
+                .avg("metrics.checkout_rate").as("metricsCheckoutRate")
+                .avg("metrics.cpc").as("metricsCpc")
+                .avg("metrics.cpdc").as("metricsCpdc")
+                .avg("metrics.cr").as("metricsCr")
+                .avg("metrics.ctr").as("metricsCtr")
+                .avg("metrics.direct_cr").as("metricsDirectCr")
+                .avg("metrics.direct_cir").as("metricsDirectCir")
+                .avg("metrics.direct_roi").as("metricsDirectRoi")
+                .avg("metrics.avg_rank").as("metricsAvgRank")
+                .avg("metrics.product_ctr").as("metricsProductCtr")
+                .avg("metrics.location_in_ads").as("metricsLocationInAds")
+                .avg("metrics.cpm").as("metricsCpm");
         ops.add(group);
 
-        // Projection
         ProjectionOperation project = Aggregation.project()
-                .and("_id").as("campaignId")
+                .and("_id.campaignId").as("campaignId")
+                .and("_id.keyword").as("keyword")
                 .andInclude(
                         "ratioBroadCir", "ratioBroadGmv", "ratioBroadOrder", "ratioBroadOrderAmount",
                         "ratioBroadRoi", "ratioCheckout", "ratioCheckoutRate", "ratioClick",
@@ -420,16 +209,15 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                         "ratioProductClick", "ratioProductImpression", "ratioProductCtr",
                         "ratioReach", "ratioPageViews", "ratioUniqueVisitors", "ratioView",
                         "ratioCpm", "ratioUniqueClickUser",
-                        "metricsBroadCir", "metricsBroadGmv", "metricsBroadOrder",
-                        "metricsBroadOrderAmount", "metricsBroadRoi", "metricsCheckout",
-                        "metricsCheckoutRate", "metricsClick", "metricsCost", "metricsCpc",
-                        "metricsCpdc", "metricsCr", "metricsCtr", "metricsDirectCr",
-                        "metricsDirectCir", "metricsDirectGmv", "metricsDirectOrder",
-                        "metricsDirectOrderAmount", "metricsDirectRoi", "metricsImpression",
-                        "metricsAvgRank", "metricsProductClick", "metricsProductImpression",
-                        "metricsProductCtr", "metricsLocationInAds", "metricsReach",
-                        "metricsPageViews", "metricsUniqueVisitors", "metricsView",
-                        "metricsCpm", "metricsUniqueClickUser"
+                        "metricsBroadCir", "metricsBroadGmv", "metricsBroadOrder", "metricsBroadOrderAmount",
+                        "metricsCheckout", "metricsClick", "metricsCost", "metricsCpm",
+                        "metricsDirectGmv", "metricsDirectOrder", "metricsDirectOrderAmount",
+                        "metricsImpression", "metricsProductClick", "metricsProductImpression",
+                        "metricsReach", "metricsPageViews", "metricsUniqueVisitors", "metricsView",
+                        "metricsUniqueClickUser", "metricsBroadRoi", "metricsCheckoutRate",
+                        "metricsCpc", "metricsCpdc", "metricsCr", "metricsCtr",
+                        "metricsDirectCr", "metricsDirectCir", "metricsDirectRoi",
+                        "metricsAvgRank", "metricsProductCtr", "metricsLocationInAds"
                 );
         ops.add(project);
 
@@ -445,7 +233,6 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     private void populateComparisonFields(ProductKeywordResponseDto current, ProductKeywordResponseDto previous) {
         if (previous == null) return;
 
-        // Ratio comparisons
         current.setRatioBroadCirComparison(calculateChange(current.getRatioBroadCir(), previous.getRatioBroadCir()));
         current.setRatioBroadGmvComparison(calculateChange(current.getRatioBroadGmv(), previous.getRatioBroadGmv()));
         current.setRatioBroadOrderComparison(calculateChange(current.getRatioBroadOrder(), previous.getRatioBroadOrder()));
@@ -476,7 +263,6 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         current.setRatioCpmComparison(calculateChange(current.getRatioCpm(), previous.getRatioCpm()));
         current.setRatioUniqueClickUserComparison(calculateChange(current.getRatioUniqueClickUser(), previous.getRatioUniqueClickUser()));
 
-        // Metrics comparisons
         current.setMetricsBroadCirComparison(calculateChange(current.getMetricsBroadCir(), previous.getMetricsBroadCir()));
         current.setMetricsBroadGmvComparison(calculateChange(current.getMetricsBroadGmv(), previous.getMetricsBroadGmv()));
         current.setMetricsBroadOrderComparison(calculateChange(current.getMetricsBroadOrder(), previous.getMetricsBroadOrder()));
@@ -512,7 +298,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
 
     private Double calculateChange(Double current, Double previous) {
         if (current == null || previous == null || previous == 0) {
-            return null;
+            return 0.0;
         }
         return (current - previous) / previous;
     }
@@ -530,7 +316,6 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         );
     }
 
-    // Helper methods
     private Long getLong(Document doc, String key) {
         if (doc == null) return null;
         Object v = doc.get(key);

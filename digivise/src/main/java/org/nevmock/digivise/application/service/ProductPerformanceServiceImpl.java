@@ -41,12 +41,12 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             String name,
             Pageable pageable
     ) {
-        // Get aggregated data for first period
+        
         List<ProductPerformanceResponseDto> period1DataList = getAggregatedDataByProductForRange(
                 shopId, name, from1, to1
         );
 
-        // Get aggregated data for second period (for comparison)
+        
         Map<Long, ProductPerformanceResponseDto> period2DataMap = getAggregatedDataByProductForRange(
                 shopId, name, from2, to2
         ).stream()
@@ -56,11 +56,11 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        // Create wrapper DTOs with comparison data
+        
         List<ProductPerformanceWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
             ProductPerformanceResponseDto period2Data = period2DataMap.get(period1Data.getProductId());
 
-            // Populate comparison fields
+            
             populateComparisonFields(period1Data, period2Data);
 
             return ProductPerformanceWrapperDto.builder()
@@ -74,7 +74,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                     .build();
         }).collect(Collectors.toList());
 
-        // Apply pagination
+        
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), resultList.size());
 
@@ -92,7 +92,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             String name,
             Pageable pageable
     ) {
-        // Keep the original method for backward compatibility
+        
         List<AggregationOperation> ops = new ArrayList<>();
 
         long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
@@ -139,7 +139,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .and("data.confirmed_buyers").as("confirmedBuyers")
         );
 
-        // Add skip and limit for pagination
+        
         ops.add(Aggregation.skip(pageable.getOffset()));
         ops.add(Aggregation.limit(pageable.getPageSize()));
 
@@ -267,12 +267,12 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         ));
         ops.add(Aggregation.unwind("data"));
 
-        // Filter by name if provided
+        
         if (name != null && !name.trim().isEmpty()) {
             ops.add(Aggregation.match(Criteria.where("data.name").regex(name, "i")));
         }
 
-        // Group by product ID and calculate averages
+        
         ops.add(Aggregation.group("data.id")
                 .avg("data.uv").as("avgUv")
                 .avg("data.pv").as("avgPv")
@@ -296,7 +296,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .first("data.status").as("status")
         );
 
-        // Project the results
+        
         ops.add(Aggregation.project()
                 .and("_id").as("productId")
                 .and("avgUv").as("uv")
@@ -392,7 +392,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .build();
     }
 
-    // Helper methods
+    
     private String getString(Document d, String key) {
         Object v = d.get(key);
         return v instanceof String ? (String) v : null;
@@ -421,11 +421,11 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         return null;
     }
 
-    // Tambahkan method debug ini ke ProductPerformanceServiceImpl untuk test
+    
     public void debugProductPerformanceData(String shopId) {
         System.out.println("=== SIMPLE DEBUG ===");
 
-        // 1. Cek total documents
+        
         long total = mongoTemplate.count(
                 org.springframework.data.mongodb.core.query.Query.query(
                         Criteria.where("shop_id").is(shopId)
@@ -434,7 +434,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         );
         System.out.println("Total documents with shop_id " + shopId + ": " + total);
 
-        // 2. Get sample document
+        
         Document sample = mongoTemplate.findOne(
                 org.springframework.data.mongodb.core.query.Query.query(
                         Criteria.where("shop_id").is(shopId)
@@ -450,11 +450,11 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             System.out.println("No documents found for shop_id: " + shopId);
         }
 
-        // 3. Cek field yang ada
+        
         if (sample != null) {
             System.out.println("Available fields: " + sample.keySet());
 
-            // Cek apakah ada field 'data'
+            
             if (sample.containsKey("data")) {
                 Object dataField = sample.get("data");
                 System.out.println("Data field type: " + dataField.getClass().getSimpleName());
@@ -468,7 +468,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 }
             }
 
-            // Cek field createdAt
+            
             if (sample.containsKey("createdAt")) {
                 Object createdAt = sample.get("createdAt");
                 System.out.println("CreatedAt field type: " + createdAt.getClass().getSimpleName());

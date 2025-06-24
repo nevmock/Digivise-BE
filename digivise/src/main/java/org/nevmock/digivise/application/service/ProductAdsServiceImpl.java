@@ -1,304 +1,3 @@
-//package org.nevmock.digivise.application.service;
-//
-//import org.bson.Document;
-//import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
-//import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
-//import org.nevmock.digivise.domain.model.KPI;
-//import org.nevmock.digivise.domain.model.Merchant;
-//import org.nevmock.digivise.domain.port.in.ProductAdsService;
-//import org.nevmock.digivise.domain.port.out.KPIRepository;
-//import org.nevmock.digivise.domain.port.out.MerchantRepository;
-//import org.nevmock.digivise.utils.MathKt;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.data.domain.Page;
-//import org.springframework.data.domain.PageImpl;
-//import org.springframework.data.domain.Pageable;
-//import org.springframework.data.mongodb.core.MongoTemplate;
-//import org.springframework.data.mongodb.core.aggregation.Aggregation;
-//import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
-//import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-//import org.springframework.data.mongodb.core.query.Criteria;
-//import org.springframework.data.mongodb.core.query.Query;
-//import org.springframework.data.mongodb.core.query.Update;
-//import org.springframework.stereotype.Service;
-//
-//import java.time.LocalDateTime;
-//import java.time.ZoneId;
-//import java.util.ArrayList;
-//import java.util.Collections;
-//import java.util.List;
-//import java.util.Map;
-//import java.util.function.Function;
-//import java.util.stream.Collectors;
-//
-//@Service
-//public class ProductAdsServiceImpl implements ProductAdsService {
-//
-//    @Autowired
-//    private MongoTemplate mongoTemplate;
-//
-//    @Autowired
-//    private MerchantRepository merchantRepository;
-//
-//    @Autowired
-//    private KPIRepository kpiRepository;
-//
-//    @Override
-//    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
-//            String shopId,
-//            String biddingStrategy,
-//            LocalDateTime from1,
-//            LocalDateTime to1,
-//            LocalDateTime from2,
-//            LocalDateTime to2,
-//            Pageable pageable,
-//            String type,
-//            String state,
-//            String productPlacement,
-//            String salesClassification,
-//            String title
-//    ) {
-//        Merchant merchant = merchantRepository
-//                .findByShopeeMerchantId(shopId)
-//                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
-//        KPI kpi = kpiRepository
-//                .findByMerchantId(merchant.getId())
-//                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
-//
-//        List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, kpi);
-//
-//        Map<Long, ProductAdsResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(shopId, biddingStrategy, type, state, productPlacement, title, from2, to2, kpi)
-//                .stream()
-//                .collect(Collectors.toMap(ProductAdsResponseDto::getCampaignId, Function.identity()));
-//
-//        if (period1DataList.isEmpty()) {
-//            return new PageImpl<>(Collections.emptyList(), pageable, 0);
-//        }
-//
-//        List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
-//            ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
-//
-//            populateComparisonFields(period1Data, period2Data);
-//
-//            period1Data.setInsight(
-//                    MathKt.renderInsight(
-//                            MathKt.formulateRecommendation(
-//                                    period1Data.getCpc(),
-//                                    period1Data.getAcos(),
-//                                    period1Data.getClick(),
-//                                    kpi,
-//                                    null,
-//                                    null
-//                            )
-//                    )
-//            );
-//
-//            return ProductAdsResponseWrapperDto.builder()
-//                    .campaignId(period1Data.getCampaignId())
-//                    .from1(from1)
-//                    .to1(to1)
-//                    .from2(from2)
-//                    .to2(to2)
-//                    .data(Collections.singletonList(period1Data))
-//                    .build();
-//        }).collect(Collectors.toList());
-//
-//        int start = (int) pageable.getOffset();
-//        int end = Math.min((start + pageable.getPageSize()), resultList.size());
-//
-//        if (start > resultList.size()) {
-//            return new PageImpl<>(Collections.emptyList(), pageable, resultList.size());
-//        }
-//
-//        return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
-//    }
-//
-//    private void populateComparisonFields(ProductAdsResponseDto currentData, ProductAdsResponseDto previousData) {
-//        currentData.setCostComparison(calculateComparison(currentData.getCost(), previousData != null ? previousData.getCost() : null));
-//        currentData.setCpcComparison(calculateComparison(currentData.getCpc(), previousData != null ? previousData.getCpc() : null));
-//        currentData.setAcosComparison(calculateComparison(currentData.getAcos(), previousData != null ? previousData.getAcos() : null));
-//        currentData.setCtrComparison(calculateComparison(currentData.getCtr(), previousData != null ? previousData.getCtr() : null));
-//        currentData.setImpressionComparison(calculateComparison(currentData.getImpression(), previousData != null ? previousData.getImpression() : null));
-//        currentData.setClickComparison(calculateComparison(currentData.getClick(), previousData != null ? previousData.getClick() : null));
-//        currentData.setGmvComparison(calculateComparison(currentData.getGmv(), previousData != null ? previousData.getGmv() : null));
-//        currentData.setRoasComparison(calculateComparison(currentData.getRoas(), previousData != null ? previousData.getRoas() : null));
-//        currentData.setCrComparison(calculateComparison(currentData.getCr(), previousData != null ? previousData.getCr() : null));
-//        currentData.setDirectOrderComparison(calculateComparison(currentData.getDirectOrder(), previousData != null ? previousData.getDirectOrder() : null));
-//        currentData.setDirectOrderAmountComparison(calculateComparison(currentData.getDirectOrderAmount(), previousData != null ? previousData.getDirectOrderAmount() : null));
-//        currentData.setDirectGmvComparison(calculateComparison(currentData.getDirectGmv(), previousData != null ? previousData.getDirectGmv() : null));
-//        currentData.setDirectRoiComparison(calculateComparison(currentData.getDirectRoi(), previousData != null ? previousData.getDirectRoi() : null));
-//        currentData.setDirectCirComparison(calculateComparison(currentData.getDirectCir(), previousData != null ? previousData.getDirectCir() : null));
-//        currentData.setDirectCrComparison(calculateComparison(currentData.getDirectCr(), previousData != null ? previousData.getDirectCr() : null));
-//    }
-//
-//    private Double calculateComparison(Double currentValue, Double previousValue) {
-//        if (currentValue == null || previousValue == null) {
-//            return null;
-//        }
-//        if (previousValue == 0) {
-//            return (currentValue > 0) ? 1.0 : 0.0;
-//        }
-//        return (currentValue - previousValue) / previousValue;
-//    }
-//
-//    private List<ProductAdsResponseDto> getAggregatedDataByCampaignForRange(
-//            String shopId, String biddingStrategy, String type, String state,
-//            String productPlacement, String title, LocalDateTime from, LocalDateTime to, KPI kpi) {
-//
-//        long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
-//        long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
-//
-//        List<AggregationOperation> ops = new ArrayList<>();
-//
-//        Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
-//                .and("from").gte(fromTimestamp).lte(toTimestamp);
-//        ops.add(Aggregation.match(matchCriteria));
-//        ops.add(Aggregation.unwind("data.entry_list"));
-//
-//        if (biddingStrategy != null && !biddingStrategy.trim().isEmpty()) {
-//            ops.add(Aggregation.match(Criteria.where("data.entry_list.manual_product_ads.bidding_strategy").is(biddingStrategy)));
-//        }
-//        if (type != null && !type.trim().isEmpty()) {
-//            ops.add(Aggregation.match(Criteria.where("data.entry_list.type").is(type)));
-//        }
-//        if (state != null && !state.trim().isEmpty()) {
-//            ops.add(Aggregation.match(Criteria.where("data.entry_list.state").is(state)));
-//        }
-//        if (productPlacement != null && !productPlacement.trim().isEmpty()) {
-//            ops.add(Aggregation.match(Criteria.where("data.entry_list.manual_product_ads.product_placement").is(productPlacement)));
-//        }
-//        if (title != null && !title.trim().isEmpty()) {
-//            ops.add(Aggregation.match(Criteria.where("data.entry_list.title").regex(title, "i")));
-//        }
-//
-//        ops.add(Aggregation.group("data.entry_list.campaign.campaign_id")
-//                .sum("data.entry_list.report.cost").as("totalCost")
-//                .sum("data.entry_list.campaign.daily_budget").as("dailyBudget")
-//                .avg("data.entry_list.report.impression").as("totalImpression")
-//                .avg("data.entry_list.report.click").as("totalClick")
-//                .avg("data.entry_list.report.broad_gmv").as("totalBroadGmv")
-//                .sum("data.entry_list.report.direct_gmv").as("totalDirectGmv")
-//                .avg("data.entry_list.report.direct_order").as("totalDirectOrder")
-//                .avg("data.entry_list.report.direct_order_amount").as("totalDirectOrderAmount")
-//                .avg("data.entry_list.report.cpc").as("avgCpc")
-//                .avg("data.entry_list.report.broad_cir").as("avgAcos") // ACOS adalah CIR
-//                .avg("data.entry_list.report.ctr").as("avgCtr")
-//                .avg("data.entry_list.report.direct_roi").as("avgDirectRoi")
-//                .avg("data.entry_list.report.direct_cir").as("avgDirectCir")
-//                .avg("data.entry_list.report.direct_cr").as("avgDirectCr")
-//                .avg("data.entry_list.report.broad_roi").as("avgRoas") // ROAS adalah ROI
-//                .avg("data.entry_list.report.cr").as("avgCr")
-//                .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
-//                .first("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
-//                .first("data.entry_list.type").as("type")
-//                .first("data.entry_list.state").as("state")
-//        );
-//
-//        ops.add(Aggregation.project()
-//                .and("_id").as("campaignId")
-//                .and("totalCost").divide(10.0).as("cost")
-//                .and("avgCpc").divide(1000.0).as("cpc")
-//                .and("avgAcos").as("acos")
-//                .and("avgCtr").as("ctr")
-//                .and("dailyBudget").divide(100000.0).as("dailyBudget")
-//                .and("totalImpression").as("impression")
-//                .and("totalClick").as("click")
-//                .andExpression("totalBroadGmv + totalDirectGmv").divide(100000.0).as("gmv")
-//                .and("totalDirectOrder").as("directOrder")
-//                .and("totalDirectOrderAmount").as("directOrderAmount")
-//                .and("totalDirectGmv").divide(100000.0).as("directGmv")
-//                .and("avgDirectRoi").as("directRoi")
-//                .and("avgDirectCir").as("directCir")
-//                .and("avgDirectCr").as("directCr")
-//                .and("avgRoas").as("roas")
-//                .and("avgCr").as("cr")
-//                .andInclude("biddingStrategy", "productPlacement", "type", "state")
-//        );
-//
-//        AggregationResults<Document> results = mongoTemplate.aggregate(
-//                Aggregation.newAggregation(ops), "ProductAds", Document.class
-//        );
-//
-//        return results.getMappedResults().stream()
-//                .map(this::mapDocumentToDto)
-//                .collect(Collectors.toList());
-//    }
-//
-//    private ProductAdsResponseDto mapDocumentToDto(Document doc) {
-//        return ProductAdsResponseDto.builder()
-//                .campaignId(getLong(doc, "campaignId"))
-//                .shopeeFrom(getString(doc, "shopeeFrom"))
-//                .shopeeTo(getString(doc, "shopeeTo"))
-//                .cost(getDouble(doc, "cost"))
-//                .cpc(getDouble(doc, "cpc"))
-//                .acos(getDouble(doc, "acos"))
-//                .ctr(getDouble(doc, "ctr"))
-//                .impression(getDouble(doc, "impression"))
-//                .click(getDouble(doc, "click"))
-//                .gmv(getDouble(doc, "gmv"))
-//                .directOrder(getDouble(doc, "directOrder"))
-//                .directOrderAmount(getDouble(doc, "directOrderAmount"))
-//                .directGmv(getDouble(doc, "directGmv"))
-//                .directRoi(getDouble(doc, "directRoi"))
-//                .directCir(getDouble(doc, "directCir"))
-//                .directCr(getDouble(doc, "directCr"))
-//                .roas(getDouble(doc, "roas"))
-//                .cr(getDouble(doc, "cr"))
-//                .biddingStrategy(getString(doc, "biddingStrategy"))
-//                .productPlacement(getString(doc, "productPlacement"))
-//                .type(getString(doc, "type"))
-//                .state(getString(doc, "state"))
-//                .dailyBudget(getDouble(doc, "dailyBudget"))
-//                .build();
-//    }
-//
-//    // Helper methods (getLong, getDouble, getString) tidak berubah
-//    private Double getDouble(Document doc, String key) {
-//        Object v = doc.get(key);
-//        if (v instanceof Number) {
-//            return ((Number) v).doubleValue();
-//        }
-//        return null;
-//    }
-//
-//    private Long getLong(Document doc, String key) {
-//        Object v = doc.get(key);
-//        if (v instanceof Number) {
-//            return ((Number) v).longValue();
-//        }
-//        return null;
-//    }
-//
-//    private String getString(Document doc, String key) {
-//        Object v = doc.get(key);
-//        return v instanceof String ? (String) v : null;
-//    }
-//
-//    @Override
-//    public boolean insertCustomRoas(String shopId, Long campaignId, Double customRoas, Long from, Long to) {
-//        try {
-//            Query query = new Query();
-//            query.addCriteria(
-//                    Criteria.where("shop_id").is(shopId)
-//                            .and("from").is(from)
-//                            .and("to").is(to)
-//                            .and("data.entry_list.campaign.campaign_id").is(campaignId)
-//            );
-//
-//            Update update = new Update();
-//            update.set("data.entry_list.$.custom_roas", customRoas);
-//            update.set("data.entry_list.$.custom_roas_updated_at", LocalDateTime.now());
-//
-//            var result = mongoTemplate.updateMulti(query, update, "ProductAds");
-//
-//            return result.getModifiedCount() > 0;
-//
-//        } catch (Exception e) {
-//            System.err.println("Error inserting custom ROAS: " + e.getMessage());
-//            return false;
-//        }
-//    }
-//}
 package org.nevmock.digivise.application.service;
 
 import org.bson.Document;
@@ -367,10 +66,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .findByMerchantId(merchant.getId())
                 .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
 
-        // Get custom ROAS data for period 1
+        
         Map<Long, Double> customRoasMap1 = getCustomRoasForPeriod(shopId, from1, to1);
 
-        // Get custom ROAS data for period 2
+        
         Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
 
         List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, kpi);
@@ -386,17 +85,17 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
             ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
 
-            // Process custom ROAS for period 1
+            
             processCustomRoas(period1Data, customRoasMap1.get(period1Data.getCampaignId()), kpi);
 
-            // Process custom ROAS for period 2 if data exists
+            
             if (period2Data != null) {
                 processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
             }
 
             populateComparisonFields(period1Data, period2Data);
 
-            // Set insight for period1Data (this will be overridden if custom ROAS exists)
+            
             if (!period1Data.getHasCustomRoas()) {
                 period1Data.setInsight(
                         MathKt.renderInsight(
@@ -460,7 +159,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         ops.add(Aggregation.match(matchCriteria));
         ops.add(Aggregation.unwind("data.entry_list"));
 
-        // Only get entries that have custom_roas
+        
         ops.add(Aggregation.match(Criteria.where("data.entry_list.custom_roas").exists(true)));
 
         ops.add(Aggregation.group("data.entry_list.campaign.campaign_id")
@@ -556,12 +255,12 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .avg("data.entry_list.report.direct_order").as("totalDirectOrder")
                 .avg("data.entry_list.report.direct_order_amount").as("totalDirectOrderAmount")
                 .avg("data.entry_list.report.cpc").as("avgCpc")
-                .avg("data.entry_list.report.broad_cir").as("avgAcos") // ACOS adalah CIR
+                .avg("data.entry_list.report.broad_cir").as("avgAcos") 
                 .avg("data.entry_list.report.ctr").as("avgCtr")
                 .avg("data.entry_list.report.direct_roi").as("avgDirectRoi")
                 .avg("data.entry_list.report.direct_cir").as("avgDirectCir")
                 .avg("data.entry_list.report.direct_cr").as("avgDirectCr")
-                .avg("data.entry_list.report.broad_roi").as("avgRoas") // ROAS adalah ROI
+                .avg("data.entry_list.report.broad_roi").as("avgRoas") 
                 .avg("data.entry_list.report.cr").as("avgCr")
                 .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
                 .first("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
@@ -578,7 +277,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("dailyBudget").divide(100000.0).as("dailyBudget")
                 .and("totalImpression").as("impression")
                 .and("totalClick").as("click")
-                //.andExpression("totalBroadGmv + totalDirectGmv").divide(100000.0).as("gmv")
+                
                 .and("totalDirectOrder").as("directOrder")
                 .and("totalDirectOrderAmount").as("directOrderAmount")
                 .and("totalDirectGmv").divide(100000.0).as("directGmv")
@@ -624,11 +323,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .type(getString(doc, "type"))
                 .state(getString(doc, "state"))
                 .dailyBudget(getDouble(doc, "dailyBudget"))
-                .hasCustomRoas(false) // Default value, will be set in processCustomRoas
+                .hasCustomRoas(false) 
                 .build();
     }
 
-    // Helper methods
+    
     private Double getDouble(Document doc, String key) {
         Object v = doc.get(key);
         if (v instanceof Number) {
