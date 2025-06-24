@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
@@ -245,6 +246,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         if (title != null && !title.trim().isEmpty()) {
             ops.add(Aggregation.match(Criteria.where("data.entry_list.title").regex(title, "i")));
         }
+        ops.add(Aggregation.sort(Sort.by(Sort.Direction.DESC, "from")));
 
         ops.add(Aggregation.group("data.entry_list.campaign.campaign_id")
                 .sum("data.entry_list.report.cost").as("totalCost")
@@ -267,6 +269,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .first("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
                 .first("data.entry_list.type").as("type")
                 .first("data.entry_list.state").as("state")
+                .first("data.entry_list.title").as("title")
+                .first("data.entry_list.image").as("image")
         );
 
         ops.add(Aggregation.project()
@@ -278,7 +282,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("dailyBudget").divide(100000.0).as("dailyBudget")
                 .and("totalImpression").as("impression")
                 .and("totalClick").as("click")
-                
+                .and("data.entry_list.title").as("title")
                 .and("totalDirectOrder").as("directOrder")
                 .and("totalDirectOrderAmount").as("directOrderAmount")
                 .and("totalDirectGmv").divide(100000.0).as("directGmv")
@@ -287,7 +291,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("avgDirectCr").as("directCr")
                 .and("avgRoas").as("roas")
                 .and("avgCr").as("cr")
-                .andInclude("biddingStrategy", "productPlacement", "type", "state")
+                .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title")
         );
 
         AggregationResults<Document> results = mongoTemplate.aggregate(
@@ -324,7 +328,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .type(getString(doc, "type"))
                 .state(getString(doc, "state"))
                 .dailyBudget(getDouble(doc, "dailyBudget"))
-                .hasCustomRoas(false) 
+                .title(getString(doc, "title"))
+                .hasCustomRoas(false)
+                .image(getString(doc, "image"))
                 .build();
     }
 

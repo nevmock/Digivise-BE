@@ -1,133 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 package org.nevmock.digivise.application.service;
 
 import lombok.RequiredArgsConstructor;
@@ -176,7 +46,7 @@ public class ProductStockServiceImpl implements ProductStockService {
 
         if (name != null && !name.trim().isEmpty()) {
             Criteria nameFilter = Criteria.where("data.name")
-                    .regex(".*" + name.trim() + ".*", "i"); 
+                    .regex(".*" + name.trim() + ".*", "i");
             ops.add(Aggregation.match(nameFilter));
         }
 
@@ -339,7 +209,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .build();
     }
 
-    
+
     private String getString(Document d, String key) {
         Object v = d.get(key);
         return v instanceof String ? (String) v : null;
