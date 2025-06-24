@@ -495,7 +495,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         currentData.setCtrComparison(calculateComparison(currentData.getCtr(), previousData != null ? previousData.getCtr() : null));
         currentData.setImpressionComparison(calculateComparison(currentData.getImpression(), previousData != null ? previousData.getImpression() : null));
         currentData.setClickComparison(calculateComparison(currentData.getClick(), previousData != null ? previousData.getClick() : null));
-        currentData.setGmvComparison(calculateComparison(currentData.getGmv(), previousData != null ? previousData.getGmv() : null));
+        currentData.setBroadGmv(calculateComparison(currentData.getBroadGmv(), previousData != null ? previousData.getBroadGmv() : null));
         currentData.setRoasComparison(calculateComparison(currentData.getRoas(), previousData != null ? previousData.getRoas() : null));
         currentData.setCrComparison(calculateComparison(currentData.getCr(), previousData != null ? previousData.getCr() : null));
         currentData.setDirectOrderComparison(calculateComparison(currentData.getDirectOrder(), previousData != null ? previousData.getDirectOrder() : null));
