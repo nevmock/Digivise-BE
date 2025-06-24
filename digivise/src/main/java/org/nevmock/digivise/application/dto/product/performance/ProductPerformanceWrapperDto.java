@@ -28,11 +28,9 @@ public class ProductPerformanceWrapperDto {
     private String shopId;
     private Long productId;
 
-    // First period range
     private LocalDateTime from1;
     private LocalDateTime to1;
 
-    // Second period range (for comparison)
     private LocalDateTime from2;
     private LocalDateTime to2;
 

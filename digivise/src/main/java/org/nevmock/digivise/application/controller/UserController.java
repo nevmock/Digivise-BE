@@ -20,27 +20,13 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<GenericDto<UserResponseDto>> createUser(@RequestBody UserRequestDto user) {
+    public ResponseEntity<String> createUser(@RequestBody UserRequestDto user) {
 
         try {
-            UserResponseDto userResponseDto = userService.createUser(user);
-            return ResponseEntity.ok(
-                    GenericDto.<UserResponseDto>builder()
-                            .data(userResponseDto)
-                            .code(HttpStatusCode.valueOf(201))
-                            .status("Created")
-                            .error(null)
-                            .build()
-            );
+            String userResponseDto = userService.createUser(user);
+            return ResponseEntity.ok(userResponseDto);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                    GenericDto.<UserResponseDto>builder()
-                            .data(null)
-                            .code(HttpStatusCode.valueOf(400))
-                            .status("Bad Request")
-                            .error(e.getMessage())
-                            .build()
-            );
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

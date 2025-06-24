@@ -277,12 +277,10 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         KPI kpi = kpiRepository.findByMerchantId(merchant.getId())
                 .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
 
-        // Get aggregated data for period 1
         List<ProductKeywordResponseDto> period1DataList = getAggregatedDataByCampaignForRange(
                 shopId, from1, to1, name, campaignId
         );
 
-        // Get aggregated data for period 2 and convert to map
         Map<Long, ProductKeywordResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(
                 shopId, from2, to2, name, campaignId
         ).stream().collect(Collectors.toMap(
@@ -295,7 +293,6 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        // Build wrapper DTOs with comparison
         List<ProductKeywordResponseWrapperDto> wrappers = period1DataList.stream()
                 .map(dto -> {
                     ProductKeywordResponseDto prevDto = period2DataMap.get(dto.getCampaignId());
@@ -314,7 +311,6 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                 })
                 .collect(Collectors.toList());
 
-        // Pagination
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), wrappers.size());
         List<ProductKeywordResponseWrapperDto> pagedList = wrappers.subList(start, end);
@@ -330,7 +326,6 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
 
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Base criteria
         Criteria criteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTs).lte(toTs);
         ops.add(Aggregation.match(criteria));
@@ -346,9 +341,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
             ops.add(Aggregation.match(Criteria.where("data.data.key").regex(keywordFilter, "i")));
         }
 
-        // Group by campaign_id
         GroupOperation group = Aggregation.group("campaign_id")
-                // Ratios: Average
                 .avg("data.data.ratio.broad_cir").as("ratioBroadCir")
                 .avg("data.data.ratio.broad_gmv").as("ratioBroadGmv")
                 .avg("data.data.ratio.broad_order").as("ratioBroadOrder")

@@ -11,6 +11,7 @@ import org.nevmock.digivise.domain.port.out.UserRepository;
 import org.nevmock.digivise.infrastructure.config.exceptions.AlreadyExistException;
 import org.springframework.stereotype.Service;
 
+import java.net.http.HttpResponse;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
@@ -25,7 +26,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
 
     @Override
-    public UserResponseDto createUser(UserRequestDto user) {
+    public String createUser(UserRequestDto user) {
         Timestamp now = new Timestamp(System.currentTimeMillis());
 
         User newUser = new User();
@@ -52,7 +53,7 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(newUser);
 
-        return toDto(newUser);
+        return "Login successful. User created with ID: " + newUser.getId();
     }
 
     @Override
