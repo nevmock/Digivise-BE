@@ -298,7 +298,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
 
     private Double calculateChange(Double current, Double previous) {
         if (current == null || previous == null || previous == 0) {
-            return 0.0;
+            return null;
         }
         return (current - previous) / previous;
     }
