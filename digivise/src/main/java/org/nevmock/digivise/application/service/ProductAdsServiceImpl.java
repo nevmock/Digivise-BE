@@ -95,8 +95,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
             populateComparisonFields(period1Data, period2Data);
 
-            
+
             if (!period1Data.getHasCustomRoas()) {
+
                 period1Data.setInsight(
                         MathKt.renderInsight(
                                 MathKt.formulateRecommendation(
@@ -272,7 +273,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("_id").as("campaignId")
                 .and("totalCost").divide(10.0).as("cost")
                 .and("avgCpc").divide(100000.0).as("cpc")
-                .and("avgAcos").divide(100000.0).as("acos")
+                .and("avgAcos").as("acos")
                 .and("avgCtr").as("ctr")
                 .and("dailyBudget").divide(100000.0).as("dailyBudget")
                 .and("totalImpression").as("impression")
