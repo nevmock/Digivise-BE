@@ -11,6 +11,8 @@ public interface ProductKeywordChartService {
     List<ProductKeywordChartWrapperDto> findMetricsByRange(
             String shopId,
             LocalDateTime from,
-            LocalDateTime to
+            LocalDateTime to,
+            Long campaignId,
+            String keyword
     );
 }

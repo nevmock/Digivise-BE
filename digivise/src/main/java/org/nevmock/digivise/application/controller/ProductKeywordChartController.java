@@ -24,9 +24,11 @@ public class ProductKeywordChartController {
     public List<ProductKeywordChartWrapperDto> getKeywordChartMetrics(
             @RequestParam String shopId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(required = false) Long campaignId,
+            @RequestParam(required = false) String keyword
     ) {
-        return productKeywordChartService.findMetricsByRange(shopId, from, to);
+        return productKeywordChartService.findMetricsByRange(shopId, from, to, campaignId, keyword);
     }
 }
 

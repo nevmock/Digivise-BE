@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,18 +33,32 @@ public class ProductKeywordChartServiceImpl implements ProductKeywordChartServic
     public List<ProductKeywordChartWrapperDto> findMetricsByRange(
             String shopId,
             LocalDateTime from,
-            LocalDateTime to
+            LocalDateTime to,
+            Long campaignId,
+            String key            // nullable: jika null atau kosong, tampilkan semua keywords
     ) {
         long fromTs = from.atZone(ZoneId.systemDefault()).toEpochSecond();
-        long toTs = to.atZone(ZoneId.systemDefault()).toEpochSecond();
+        long toTs   = to.atZone(ZoneId.systemDefault()).toEpochSecond();
 
-        MatchOperation matchStage = Aggregation.match(
+        // 1. Match shop, campaign, date range
+        MatchOperation matchBase = Aggregation.match(
                 Criteria.where("shop_id").is(shopId)
+                        .and("campaign_id").is(campaignId)
                         .and("from").gte(fromTs).lte(toTs)
         );
 
+        // 2. Unwind nested data array
         UnwindOperation unwind = Aggregation.unwind("data.data");
 
+        // 3. (Optional) Filter by key, hanya jika key tidak null/empty
+        MatchOperation keyFilter = null;
+        if (key != null && !key.isEmpty()) {
+            keyFilter = Aggregation.match(
+                    Criteria.where("data.data.key").is(key)
+            );
+        }
+
+        // 4. Project fields
         ProjectionOperation project = Aggregation.project()
                 .and("data.data.key").as("key")
                 .and("data.data.metrics.impression").as("impression")
@@ -60,22 +75,28 @@ public class ProductKeywordChartServiceImpl implements ProductKeywordChartServic
                 .and("to").as("shopeeTo")
                 .and("createdAt").as("createdAt");
 
-        Aggregation aggregation = Aggregation.newAggregation(
-                matchStage,
-                unwind,
-                project
-        );
+        // 5. Build pipeline dynamically
+        List<AggregationOperation> ops = new ArrayList<>();
+        ops.add(matchBase);
+        ops.add(unwind);
+        if (keyFilter != null) ops.add(keyFilter);
+        ops.add(project);
 
+        Aggregation aggregation = Aggregation.newAggregation(ops);
+
+        // Execute aggregation
         List<Document> results = mongoTemplate.aggregate(
                 aggregation,
                 "ProductKey",
                 Document.class
         ).getMappedResults();
 
+        // Map to DTOs
         List<ProductKeywordChartResponseDto> allDtos = results.stream()
                 .map(this::toChartDto)
                 .collect(Collectors.toList());
 
+        // Group by campaign
         Map<Long, List<ProductKeywordChartResponseDto>> grouped = allDtos.stream()
                 .filter(dto -> dto.getCampaignId() != null)
                 .collect(Collectors.groupingBy(
@@ -84,6 +105,7 @@ public class ProductKeywordChartServiceImpl implements ProductKeywordChartServic
                         Collectors.toList()
                 ));
 
+        // Wrap result
         return grouped.entrySet().stream()
                 .map(e -> new ProductKeywordChartWrapperDto(
                         e.getKey(),
@@ -96,11 +118,9 @@ public class ProductKeywordChartServiceImpl implements ProductKeywordChartServic
 
     private ProductKeywordChartResponseDto toChartDto(Document doc) {
         ProductKeywordChartResponseDto dto = new ProductKeywordChartResponseDto();
-
         dto.setKey(getString(doc, "key"));
         dto.setCampaignId(getLong(doc, "campaignId"));
         dto.setType(getString(doc, "type"));
-
         dto.setImpression(getDouble(doc, "impression"));
         dto.setClick(getDouble(doc, "click"));
         dto.setCtr(getDouble(doc, "ctr"));
@@ -109,11 +129,9 @@ public class ProductKeywordChartServiceImpl implements ProductKeywordChartServic
         dto.setBroadGmv(getDouble(doc, "broadGmv"));
         dto.setDailyBudget(getDouble(doc, "dailyBudget"));
         dto.setRoas(getDouble(doc, "roas"));
-
         dto.setShopeeFrom(getLong(doc, "shopeeFrom"));
         dto.setShopeeTo(getLong(doc, "shopeeTo"));
         dto.setCreatedAt(getDateTime(doc, "createdAt"));
-
         return dto;
     }
 
@@ -124,28 +142,18 @@ public class ProductKeywordChartServiceImpl implements ProductKeywordChartServic
 
     private Long getLong(Document doc, String key) {
         Object v = doc.get(key);
-        if (v instanceof Number) {
-            return ((Number) v).longValue();
-        } else if (v instanceof String) {
-            try {
-                return Long.parseLong((String) v);
-            } catch (NumberFormatException ex) {
-                return null;
-            }
+        if (v instanceof Number) return ((Number) v).longValue();
+        if (v instanceof String) {
+            try { return Long.parseLong((String) v);} catch (NumberFormatException ex) { }
         }
         return null;
     }
 
     private Double getDouble(Document doc, String key) {
         Object v = doc.get(key);
-        if (v instanceof Number) {
-            return ((Number) v).doubleValue();
-        } else if (v instanceof String) {
-            try {
-                return Double.parseDouble((String) v);
-            } catch (NumberFormatException ex) {
-                return null;
-            }
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) {
+            try { return Double.parseDouble((String) v);} catch (NumberFormatException ex) { }
         }
         return null;
     }
@@ -153,10 +161,7 @@ public class ProductKeywordChartServiceImpl implements ProductKeywordChartServic
     private LocalDateTime getDateTime(Document doc, String key) {
         Object v = doc.get(key);
         if (v instanceof Date) {
-            return ((Date) v)
-                    .toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDateTime();
+            return ((Date) v).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         }
         return null;
     }
