@@ -125,7 +125,9 @@ public class ProductAdsController {
             @RequestParam(required = false)
             String salesClassification,
             @RequestParam(required = false)
-            String title
+            String title,
+            @RequestParam(required = false)
+            Long campaignId
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
@@ -141,7 +143,8 @@ public class ProductAdsController {
                 state,
                 productPlacement,
                 salesClassification,
-                title
+                title,
+                campaignId
         ));
     }
 

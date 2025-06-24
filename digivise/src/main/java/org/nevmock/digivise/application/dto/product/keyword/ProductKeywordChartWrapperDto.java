@@ -15,5 +15,14 @@ public class ProductKeywordChartWrapperDto {
     private Long campaignId;
     private LocalDateTime from;
     private LocalDateTime to;
+    private String key;
     private List<ProductKeywordChartResponseDto> data;
+
+    public ProductKeywordChartWrapperDto(Long campaignId, LocalDateTime from, LocalDateTime to,
+                                         List<ProductKeywordChartResponseDto> data) {
+        this.campaignId = campaignId;
+        this.from = from;
+        this.to = to;
+        this.data = data;
+    }
 }

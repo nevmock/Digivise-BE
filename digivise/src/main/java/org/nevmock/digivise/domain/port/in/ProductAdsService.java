@@ -35,7 +35,8 @@ public interface ProductAdsService {
         String state,
         String productPlacement,
         String salesClassification, // This filter can be applied post-aggregation if needed
-        String title
+        String title,
+        Long campaignId
         // hasKeywords is removed
     );
 

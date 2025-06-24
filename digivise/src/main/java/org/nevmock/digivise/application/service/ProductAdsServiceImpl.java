@@ -58,7 +58,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             String state,
             String productPlacement,
             String salesClassification,
-            String title
+            String title,
+            Long campaignId
     ) {
         Merchant merchant = merchantRepository
                 .findByShopeeMerchantId(shopId)
@@ -73,9 +74,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         
         Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
 
-        List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, kpi);
+        List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, campaignId, kpi);
 
-        Map<Long, ProductAdsResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(shopId, biddingStrategy, type, state, productPlacement, title, from2, to2, kpi)
+        Map<Long, ProductAdsResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(shopId, biddingStrategy, type, state, productPlacement, title, from2, to2, campaignId, kpi)
                 .stream()
                 .collect(Collectors.toMap(ProductAdsResponseDto::getCampaignId, Function.identity()));
 
@@ -158,6 +159,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         Criteria matchCriteria = Criteria.where("shop_id").is(shopId)
                 .and("from").gte(fromTimestamp).lte(toTimestamp);
+
         ops.add(Aggregation.match(matchCriteria));
         ops.add(Aggregation.unwind("data.entry_list"));
 
@@ -219,7 +221,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
     private List<ProductAdsResponseDto> getAggregatedDataByCampaignForRange(
             String shopId, String biddingStrategy, String type, String state,
-            String productPlacement, String title, LocalDateTime from, LocalDateTime to, KPI kpi) {
+            String productPlacement, String title, LocalDateTime from, LocalDateTime to, Long campaignId, KPI kpi) {
 
         long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
         long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
@@ -246,6 +248,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         if (title != null && !title.trim().isEmpty()) {
             ops.add(Aggregation.match(Criteria.where("data.entry_list.title").regex(title, "i")));
         }
+        if (campaignId != null) {
+            ops.add(Aggregation.match(Criteria.where("data.entry_list.campaign.campaign_id").is(campaignId)));
+        }
+
         ops.add(Aggregation.sort(Sort.by(Sort.Direction.DESC, "from")));
 
         ops.add(Aggregation.group("data.entry_list.campaign.campaign_id")
