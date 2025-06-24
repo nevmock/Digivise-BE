@@ -192,6 +192,7 @@ public class MerchantServiceImpl implements MerchantService {
                 .lastLogin(merchant.getLastLogin())
                 .officeAddress(merchant.getOfficeAddress())
                 .factoryAddress(merchant.getFactoryAddress())
+                .lastLogin(merchant.getLastLogin())
                 .sectorIndustry(merchant.getSectorIndustry()).build();
 
     }
