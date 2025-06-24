@@ -103,10 +103,13 @@ public class UserServiceImpl implements UserService {
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
-                .merchants(user.getMerchants())
+                .merchants(user.getMerchants().stream().map(
+                        this::toMerchantDto
+                ).collect(Collectors.toList()))
                 .createdAt(Timestamp.valueOf(user.getCreatedAt().toString()))
                 .updatedAt(Timestamp.valueOf(user.getUpdatedAt().toString()))
                 .activeMerchant(toMerchantDto(user.getActiveMerchant()))
+                .username(user.getUsername())
                 .build();
     }
 
@@ -118,7 +121,6 @@ public class UserServiceImpl implements UserService {
                 .id(merchant.getId())
                 .merchantName(merchant.getMerchantName())
                 .merchantShopeeId(merchant.getMerchantShopeeId())
-                .userId(merchant.getUser().getId())
                 .createdAt(Timestamp.valueOf(merchant.getCreatedAt().toString()))
                 .updatedAt(Timestamp.valueOf(merchant.getUpdatedAt().toString()))
                 .merchantShopeeId(merchant.getMerchantShopeeId())

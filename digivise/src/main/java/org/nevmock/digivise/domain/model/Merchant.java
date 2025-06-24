@@ -56,4 +56,7 @@ public class Merchant {
 
     @Column(name = "factory_address", nullable = true, length = 255)
     private String factoryAddress;
+
+    @Column(name = "last_login", nullable = true)
+    private Timestamp lastLogin;
 }

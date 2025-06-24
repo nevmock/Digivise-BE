@@ -33,7 +33,7 @@ public class UserResponseDto implements Serializable {
     @Getter
     private Timestamp updatedAt;
 
-    private List<Merchant> merchants;
+    private List<MerchantResponseDto> merchants;
 
     private MerchantResponseDto activeMerchant;
 }

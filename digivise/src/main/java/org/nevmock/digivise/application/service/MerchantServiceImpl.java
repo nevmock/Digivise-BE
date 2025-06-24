@@ -23,6 +23,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -188,6 +189,7 @@ public class MerchantServiceImpl implements MerchantService {
                 .kpi(
                     kpiResp
                 )
+                .lastLogin(merchant.getLastLogin())
                 .officeAddress(merchant.getOfficeAddress())
                 .factoryAddress(merchant.getFactoryAddress())
                 .sectorIndustry(merchant.getSectorIndustry()).build();
@@ -288,6 +290,7 @@ public class MerchantServiceImpl implements MerchantService {
 
             merchantToUpdate.setMerchantName(result.getData().getData().getName());
             merchantToUpdate.setPassword(password); // Pastikan variable `password` terisi valid
+            merchantToUpdate.setLastLogin(Timestamp.from(Instant.now()));
             merchantRepository.save(merchantToUpdate);
 
             user.setActiveMerchant(merchantToUpdate);

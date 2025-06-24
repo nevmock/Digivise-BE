@@ -35,4 +35,6 @@ public class MerchantResponseDto {
     private String factoryAddress;
 
     private String username;
+
+    private Timestamp lastLogin;
 }
