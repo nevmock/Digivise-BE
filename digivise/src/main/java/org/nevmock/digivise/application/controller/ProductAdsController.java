@@ -76,6 +76,7 @@
 package org.nevmock.digivise.application.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.nevmock.digivise.application.dto.product.ads.ProductAdsNewestResponseDto;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
 import org.springframework.data.domain.Page;
@@ -165,6 +166,15 @@ public class ProductAdsController {
         response.put("campaignId", campaignId);
         response.put("customRoas", customRoas);
 
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    @RequestMapping("/newest")
+    public ResponseEntity<ProductAdsNewestResponseDto> getNewestProductAds(
+            @RequestParam Long campaignId
+    ) {
+        ProductAdsNewestResponseDto response = productAdsService.findByCampaignId(campaignId);
         return ResponseEntity.ok(response);
     }
 }

@@ -1,5 +1,6 @@
 package org.nevmock.digivise.domain.port.in;
 
+import org.nevmock.digivise.application.dto.product.ads.ProductAdsNewestResponseDto;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseDto;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.springframework.data.domain.Page;
@@ -41,4 +42,6 @@ public interface ProductAdsService {
     );
 
     boolean insertCustomRoas(String shopId, Long campaignId, Double customRoas, Long from, Long to);
+
+    ProductAdsNewestResponseDto findByCampaignId(Long campaignId);
 }
