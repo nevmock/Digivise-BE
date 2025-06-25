@@ -62,10 +62,11 @@ public class ProductStockController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime to2,
-            @RequestParam(required = false) String name
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String state
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
-        return ResponseEntity.ok(productStockService.findByRange(shopId, from1, to1, from2, to2, name, pageRequest));
+        return ResponseEntity.ok(productStockService.findByRange(shopId, from1, to1, from2, to2, name, state, pageRequest));
     }
 }
 

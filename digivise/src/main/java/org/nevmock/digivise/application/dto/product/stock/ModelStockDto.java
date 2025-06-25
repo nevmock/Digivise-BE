@@ -2,6 +2,7 @@ package org.nevmock.digivise.application.dto.product.stock;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 //@NoArgsConstructor
@@ -20,6 +21,7 @@ import lombok.NoArgsConstructor;
 //    private Integer inTransitStock;
 //    private Integer soldCount;
 //}
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

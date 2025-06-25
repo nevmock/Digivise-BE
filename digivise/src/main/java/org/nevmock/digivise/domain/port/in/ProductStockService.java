@@ -31,6 +31,7 @@ public interface ProductStockService {
             LocalDateTime from2,
             LocalDateTime to2,
             String name,
+            String state,
             Pageable pageable
     );
 }

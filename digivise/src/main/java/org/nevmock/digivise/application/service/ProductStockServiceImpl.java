@@ -2,6 +2,7 @@ package org.nevmock.digivise.application.service;
 
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
+import org.nevmock.digivise.application.dto.product.stock.ModelStockDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseWrapperDto;
 import org.nevmock.digivise.domain.port.in.ProductStockService;
@@ -19,196 +20,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-//@Service
-//@RequiredArgsConstructor
-//public class ProductStockServiceImpl implements ProductStockService {
-//
-//    private final MongoTemplate mongoTemplate;
-//
-//    @Override
-//    public Page<ProductStockResponseWrapperDto> findByShopId(
-//            String shopId,
-//            LocalDateTime from,
-//            LocalDateTime to,
-//            String name,
-//            Pageable pageable
-//    ) {
-//        Criteria criteria = Criteria.where("shop_id").is(shopId);
-//        if (from != null || to != null) {
-//            Criteria dateRange = Criteria.where("createdAt");
-//            if (from != null) dateRange.gte(from);
-//            if (to   != null) dateRange.lte(to);
-//            criteria.andOperator(dateRange);
-//        }
-//
-//        List<AggregationOperation> ops = new ArrayList<>();
-//        ops.add(Aggregation.match(criteria));
-//        ops.add(Aggregation.unwind("data"));
-//
-//        if (name != null && !name.trim().isEmpty()) {
-//            Criteria nameFilter = Criteria.where("data.name")
-//                    .regex(".*" + name.trim() + ".*", "i");
-//            ops.add(Aggregation.match(nameFilter));
-//        }
-//
-//        ProjectionOperation projectOperation = Aggregation.project()
-//                .and("$_id").as("id")
-//                .and("$uuid").as("uuid")
-//                .and("$createdAt").as("createdAt")
-//                .and("$shop_id").as("shopId")
-//                .and("data.id").as("productId")
-//                .and("data.name").as("name")
-//                .and("data.status").as("status")
-//                .and("data.cover_image").as("coverImage")
-//                .and("data.parent_sku").as("parentSku")
-//                .and("data.price_detail.price_min").as("priceMin")
-//                .and("data.price_detail.price_max").as("priceMax")
-//                .and("data.price_detail.has_discount").as("hasDiscount")
-//                .and("data.price_detail.max_discount_percentage").as("maxDiscountPercentage")
-//                .and("data.price_detail.max_discount").as("maxDiscount")
-//                .and("data.price_detail.selling_price_min").as("sellingPriceMin")
-//                .and("data.price_detail.selling_price_max").as("sellingPriceMax")
-//                .and("data.stock_detail.total_available_stock").as("totalAvailableStock")
-//                .and("data.stock_detail.total_seller_stock").as("totalSellerStock")
-//                .and("data.stock_detail.total_shopee_stock").as("totalShopeeStock")
-//                .and("data.stock_detail.low_stock_status").as("lowStockStatus")
-//                .and("data.stock_detail.enable_stock_reminder").as("enableStockReminder")
-//                .and("data.stock_detail.model_seller_stock_sold_out").as("modelSellerStockSoldOut")
-//                .and("data.stock_detail.model_shopee_stock_sold_out").as("modelShopeeStockSoldOut")
-//                .and("data.stock_detail.advanced_stock.sellable_stock").as("advancedSellableStock")
-//                .and("data.stock_detail.advanced_stock.in_transit_stock").as("advancedInTransitStock")
-//                .and("data.stock_detail.enable_stock_reminder_status").as("enableStockReminderStatus")
-//                .and("data.promotion.wholesale").as("wholesale")
-//                .and("data.promotion.has_bundle_deal").as("hasBundleDeal")
-//                .and("data.statistics.view_count").as("viewCount")
-//                .and("data.statistics.liked_count").as("likedCount")
-//                .and("data.statistics.sold_count").as("soldCount")
-//                .and("data.tag.is_virtual_sku").as("isVirtualSku")
-//                .and("data.tag.unlist").as("unlist")
-//                .and("data.tag.has_discount").as("hasDiscountTag")
-//                .and("data.tag.wholesale").as("wholesaleTag")
-//                .and("data.tag.has_bundle_deal").as("hasBundleDealTag")
-//                .and("data.tag.has_add_on_deal").as("hasAddOnDeal")
-//                .and("data.tag.live_sku").as("liveSku")
-//                .and("data.tag.ssp").as("ssp")
-//                .and("data.tag.has_ams_commission").as("hasAmsCommission")
-//                .and("data.tag.member_exclusive").as("memberExclusive")
-//                .and("data.tag.is_ipr_appealing").as("isIprAppealing")
-//                .and("data.boost_info.boost_entry_status").as("boostEntryStatus")
-//                .and("data.boost_info.show_boost_history").as("showBoostHistory")
-//                .and("data.boost_info.campaign_id").as("boostCampaignId")
-//                .and("data.modify_time").as("modifyTime")
-//                .and("data.create_time").as("createTime")
-//                .and("data.scheduled_publish_time").as("scheduledPublishTime")
-//                .and("data.mtsku_item_id").as("mtskuItemId")
-//                .and("data.appeal_info.ipr_appeal_info.appeal_opt").as("appealOpt")
-//                .and("data.appeal_info.ipr_appeal_info.can_not_appeal_transify_key").as("canNotAppealTransifyKey")
-//                .and("data.appeal_info.ipr_appeal_info.reference_id").as("referenceId")
-//                .and("data.appeal_info.ipr_appeal_info.appeal_status").as("appealStatus");
-//        ops.add(projectOperation);
-//
-//        FacetOperation facet = Aggregation.facet(
-//                        Aggregation.skip((long) pageable.getOffset()),
-//                        Aggregation.limit(pageable.getPageSize())
-//                ).as("pagedResults")
-//                .and(Aggregation.count().as("total")).as("countResult");
-//        ops.add(facet);
-//
-//        Aggregation aggregation = Aggregation.newAggregation(ops);
-//        AggregationResults<Document> results = mongoTemplate.aggregate(
-//                aggregation, "ProductStock", Document.class
-//        );
-//
-//        Document root = results.getMappedResults().isEmpty() ? null : results.getMappedResults().get(0);
-//        if (root == null) {
-//            return new PageImpl<>(Collections.emptyList(), pageable, 0);
-//        }
-//
-//        List<Document> pagedResults = root.getList("pagedResults", Document.class);
-//        List<ProductStockResponseDto> dtos = pagedResults.stream()
-//                .map(this::mapToDto)
-//                .collect(Collectors.toList());
-//
-//        Map<Long, List<ProductStockResponseDto>> grouped = dtos.stream()
-//                .filter(dto -> dto.getProductId() != null)
-//                .collect(Collectors.groupingBy(ProductStockResponseDto::getProductId));
-//
-//        List<ProductStockResponseWrapperDto> wrappers = grouped.entrySet().stream()
-//                .map(entry -> ProductStockResponseWrapperDto.builder()
-//                        .productId(entry.getKey())
-//                        .shopId(shopId)
-//                        .from(from)
-//                        .to(to)
-//                        .data(entry.getValue())
-//                        .build())
-//                .collect(Collectors.toList());
-//
-//        long totalCount = 0;
-//        List<Document> countResult = root.getList("countResult", Document.class);
-//        if (!countResult.isEmpty()) {
-//            totalCount = getNumberLong(countResult.get(0), "total");
-//        }
-//
-//        return new PageImpl<>(wrappers, pageable, totalCount);
-//    }
-//
-//    private ProductStockResponseDto mapToDto(Document doc) {
-//        return ProductStockResponseDto.builder()
-//                .id(getString(doc, "id"))
-//                .uuid(getString(doc, "uuid"))
-//                .createdAt(getLocalDateTime(doc, "createdAt"))
-//                .shopId(getString(doc, "shopId"))
-//                .productId(getLong(doc, "productId"))
-//                .name(getString(doc, "name"))
-//                .status(getInteger(doc, "status"))
-//                .coverImage(getString(doc, "coverImage"))
-//                .parentSku(getString(doc, "parentSku"))
-//                .priceMin(getDouble(doc, "priceMin"))
-//                .priceMax(getDouble(doc, "priceMax"))
-//                .hasDiscount(getBoolean(doc, "hasDiscount"))
-//                .maxDiscountPercentage(getInteger(doc, "maxDiscountPercentage"))
-//                .maxDiscount(getInteger(doc, "maxDiscount"))
-//                .sellingPriceMin(getDouble(doc, "sellingPriceMin"))
-//                .sellingPriceMax(getDouble(doc, "sellingPriceMax"))
-//                .totalAvailableStock(getInteger(doc, "totalAvailableStock"))
-//                .totalSellerStock(getInteger(doc, "totalSellerStock"))
-//                .totalShopeeStock(getInteger(doc, "totalShopeeStock"))
-//                .lowStockStatus(getInteger(doc, "lowStockStatus"))
-//                .enableStockReminder(getBoolean(doc, "enableStockReminder"))
-//                .modelSellerStockSoldOut(getBoolean(doc, "modelSellerStockSoldOut"))
-//                .modelShopeeStockSoldOut(getBoolean(doc, "modelShopeeStockSoldOut"))
-//                .advancedSellableStock(getInteger(doc, "advancedSellableStock"))
-//                .advancedInTransitStock(getInteger(doc, "advancedInTransitStock"))
-//                .enableStockReminderStatus(getInteger(doc, "enableStockReminderStatus"))
-//                .wholesale(getBoolean(doc, "wholesale"))
-//                .hasBundleDeal(getBoolean(doc, "hasBundleDeal"))
-//                .viewCount(getInteger(doc, "viewCount"))
-//                .likedCount(getInteger(doc, "likedCount"))
-//                .soldCount(getInteger(doc, "soldCount"))
-//                .isVirtualSku(getBoolean(doc, "isVirtualSku"))
-//                .unlist(getBoolean(doc, "unlist"))
-//                .hasDiscountTag(getBoolean(doc, "hasDiscountTag"))
-//                .wholesaleTag(getBoolean(doc, "wholesaleTag"))
-//                .hasBundleDealTag(getBoolean(doc, "hasBundleDealTag"))
-//                .hasAddOnDeal(getBoolean(doc, "hasAddOnDeal"))
-//                .liveSku(getBoolean(doc, "liveSku"))
-//                .ssp(getBoolean(doc, "ssp"))
-//                .hasAmsCommission(getBoolean(doc, "hasAmsCommission"))
-//                .memberExclusive(getBoolean(doc, "memberExclusive"))
-//                .isIprAppealing(getBoolean(doc, "isIprAppealing"))
-//                .boostEntryStatus(getInteger(doc, "boostEntryStatus"))
-//                .showBoostHistory(getBoolean(doc, "showBoostHistory"))
-//                .boostCampaignId(getLong(doc, "boostCampaignId"))
-//                .modifyTime(getLong(doc, "modifyTime"))
-//                .createTime(getLong(doc, "createTime"))
-//                .scheduledPublishTime(getLong(doc, "scheduledPublishTime"))
-//                .mtskuItemId(getLong(doc, "mtskuItemId"))
-//                .appealOpt(getInteger(doc, "appealOpt"))
-//                .canNotAppealTransifyKey(getString(doc, "canNotAppealTransifyKey"))
-//                .referenceId(getLong(doc, "referenceId"))
-//                .appealStatus(getInteger(doc, "appealStatus"))
-//                .build();
-//    }
 @Service
 @RequiredArgsConstructor
 public class ProductStockServiceImpl implements ProductStockService {
@@ -238,16 +49,17 @@ public class ProductStockServiceImpl implements ProductStockService {
             LocalDateTime from2,
             LocalDateTime to2,
             String name,
+            String state,
             Pageable pageable
     ) {
         // Get aggregated data for period 1
         List<ProductStockResponseDto> period1DataList = getAggregatedDataByProductForRange(
-                shopId, name, from1, to1
+                shopId, name, from1, to1, state
         );
 
         // Get aggregated data for period 2 and create map for easy lookup
         Map<Long, ProductStockResponseDto> period2DataMap = getAggregatedDataByProductForRange(
-                shopId, name, from2, to2
+                shopId, name, from2, to2, state
         ).stream()
                 .collect(Collectors.toMap(ProductStockResponseDto::getProductId, Function.identity()));
 
@@ -365,7 +177,8 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .and("data.appeal_info.ipr_appeal_info.appeal_opt").as("appealOpt")
                 .and("data.appeal_info.ipr_appeal_info.can_not_appeal_transify_key").as("canNotAppealTransifyKey")
                 .and("data.appeal_info.ipr_appeal_info.reference_id").as("referenceId")
-                .and("data.appeal_info.ipr_appeal_info.appeal_status").as("appealStatus");
+                .and("data.appeal_info.ipr_appeal_info.appeal_status").as("appealStatus")
+                .and("data.model_list").as("modelList"); // Add model_list to projection
         ops.add(projectOperation);
 
         // Apply pagination at MongoDB level
@@ -404,7 +217,7 @@ public class ProductStockServiceImpl implements ProductStockService {
      * Get aggregated data by product for a specific time range
      */
     private List<ProductStockResponseDto> getAggregatedDataByProductForRange(
-            String shopId, String name, LocalDateTime from, LocalDateTime to) {
+            String shopId, String name, LocalDateTime from, LocalDateTime to, String state) {
 
         List<AggregationOperation> ops = new ArrayList<>();
 
@@ -423,6 +236,12 @@ public class ProductStockServiceImpl implements ProductStockService {
         // Filter by name if provided
         if (name != null && !name.trim().isEmpty()) {
             ops.add(Aggregation.match(Criteria.where("data.name").regex(name, "i")));
+        }
+
+
+        if (state != null && !state.trim().isEmpty()) {
+            Criteria stateFilter = Criteria.where("data.status").is(state);
+            ops.add(Aggregation.match(stateFilter));
         }
 
         // Group by product ID and calculate averages
@@ -444,6 +263,8 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .first("data.name").as("name")
                 .first("data.cover_image").as("coverImage")
                 .first("data.status").as("status")
+                .first("createdAt").as("createdAt")
+                .first("data.model_list").as("modelList") // Add model_list to group
         );
 
         // Project to match DTO structure
@@ -463,7 +284,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .and("avgSellingPriceMax").as("sellingPriceMax")
                 .and("avgMaxDiscountPercentage").as("maxDiscountPercentage")
                 .and("avgMaxDiscount").as("maxDiscount")
-                .andInclude("name", "coverImage", "status")
+                .andInclude("name", "coverImage", "status", "modelList", "createdAt")
         );
 
         AggregationResults<Document> results = mongoTemplate.aggregate(
@@ -554,7 +375,7 @@ public class ProductStockServiceImpl implements ProductStockService {
      * Map aggregated document to DTO
      */
     private ProductStockResponseDto mapDocumentToAggregatedDto(Document doc) {
-        return ProductStockResponseDto.builder()
+        ProductStockResponseDto dto = ProductStockResponseDto.builder()
                 .productId(getNumberLong(doc, "productId"))
                 .name(getString(doc, "name"))
                 .coverImage(getString(doc, "coverImage"))
@@ -573,7 +394,14 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .sellingPriceMax(getDouble(doc, "sellingPriceMax"))
                 .maxDiscountPercentage(convertDoubleToInteger(getDouble(doc, "maxDiscountPercentage")))
                 .maxDiscount(convertDoubleToInteger(getDouble(doc, "maxDiscount")))
+                .createdAt(getLocalDateTime(doc, "createdAt"))
                 .build();
+
+        // Map model stocks from modelList
+        List<ModelStockDto> modelStocks = mapModelStocks(doc, "modelList");
+        dto.setModelStocks(modelStocks);
+
+        return dto;
     }
 
     /**
@@ -587,7 +415,7 @@ public class ProductStockServiceImpl implements ProductStockService {
      * Map document to DTO (original method)
      */
     private ProductStockResponseDto mapToDto(Document doc) {
-        return ProductStockResponseDto.builder()
+        ProductStockResponseDto dto = ProductStockResponseDto.builder()
                 .id(getString(doc, "id"))
                 .uuid(getString(doc, "uuid"))
                 .createdAt(getLocalDateTime(doc, "createdAt"))
@@ -642,6 +470,58 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .referenceId(getLong(doc, "referenceId"))
                 .appealStatus(getInteger(doc, "appealStatus"))
                 .build();
+
+        // Map model stocks from modelList
+        List<ModelStockDto> modelStocks = mapModelStocks(doc, "modelList");
+        dto.setModelStocks(modelStocks);
+
+        return dto;
+    }
+
+    /**
+     * Map modelList from document to List<ModelStockDto>
+     */
+    private List<ModelStockDto> mapModelStocks(Document doc, String fieldName) {
+        List<ModelStockDto> modelStocks = new ArrayList<>();
+
+        Object modelListObj = doc.get(fieldName);
+        if (modelListObj instanceof List) {
+            List<?> modelList = (List<?>) modelListObj;
+
+            for (Object modelObj : modelList) {
+                if (modelObj instanceof Document) {
+                    Document modelDoc = (Document) modelObj;
+
+                    // Extract stock detail information
+                    Document stockDetail = modelDoc.get("stock_detail", Document.class);
+                    Document advancedStock = null;
+                    if (stockDetail != null) {
+                        advancedStock = stockDetail.get("advanced_stock", Document.class);
+                    }
+
+                    // Extract statistics information
+                    Document statistics = modelDoc.get("statistics", Document.class);
+
+                    ModelStockDto modelStock = ModelStockDto.builder()
+                            .id(getLong(modelDoc, "id"))
+                            .name(getString(modelDoc, "name"))
+                            .sku(getString(modelDoc, "sku"))
+                            .isDefault(getBoolean(modelDoc, "is_default"))
+                            .image(getString(modelDoc, "image"))
+                            .totalAvailableStock(stockDetail != null ? getInteger(stockDetail, "total_available_stock") : null)
+                            .totalSellerStock(stockDetail != null ? getInteger(stockDetail, "total_seller_stock") : null)
+                            .totalShopeeStock(stockDetail != null ? getInteger(stockDetail, "total_shopee_stock") : null)
+                            .sellableStock(advancedStock != null ? getInteger(advancedStock, "sellable_stock") : null)
+                            .inTransitStock(advancedStock != null ? getInteger(advancedStock, "in_transit_stock") : null)
+                            .soldCount(statistics != null ? getInteger(statistics, "sold_count") : null)
+                            .build();
+
+                    modelStocks.add(modelStock);
+                }
+            }
+        }
+
+        return modelStocks;
     }
 
     private String getString(Document d, String key) {

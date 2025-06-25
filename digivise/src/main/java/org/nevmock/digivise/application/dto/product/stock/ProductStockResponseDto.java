@@ -266,7 +266,6 @@ public class ProductStockResponseDto {
 
     private List<ModelStockDto> modelStocks;
 
-    // Comparison fields (percentage change from previous period)
     private Double totalAvailableStockComparison;
     private Double totalSellerStockComparison;
     private Double totalShopeeStockComparison;
