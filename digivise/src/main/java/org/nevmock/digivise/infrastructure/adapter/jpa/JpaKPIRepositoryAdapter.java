@@ -18,7 +18,7 @@ public class JpaKPIRepositoryAdapter implements KPIRepository {
 
     @Override
     public void save(KPI kpi) {
-        kpi.setMaxAcos(kpi.getMaxAcos() / 100.0);
+        kpi.setMaxAcos(kpi.getMaxAcos());
 
         jpaRepository.save(kpi);
     }
