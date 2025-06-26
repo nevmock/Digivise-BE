@@ -383,8 +383,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             Query query = new Query();
             query.addCriteria(
                     Criteria.where("shop_id").is(shopId)
-                            .and("from").gte(timestampFrom)
-                            .and("to").lte(timestampTo)
+                            .and("from").gte(timestampFrom).lt(timestampTo)
                             .and("data.entry_list.campaign.campaign_id").is(campaignId)
             );
 
