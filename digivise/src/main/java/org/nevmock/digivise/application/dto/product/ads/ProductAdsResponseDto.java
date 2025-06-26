@@ -157,7 +157,7 @@ public class ProductAdsResponseDto {
     private Double ctrComparison;
     private Double impressionComparison;
     private Double clickComparison;
-    private Double gmvComparison;
+    private Double broadGmvComparison;
     private Double directOrderComparison;
     private Double directOrderAmountComparison;
     private Double directGmvComparison;
@@ -197,6 +197,11 @@ public class ProductAdsResponseDto {
     private String insightRoas;
     private Boolean hasCustomRoas;
     private Double customRoas;
+
+    private Double broadOrder;
+    private Double broadOrderAmount;
+
+    private Double cpdc;
 
     private String image;
 }

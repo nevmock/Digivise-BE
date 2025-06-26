@@ -210,6 +210,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         currentData.setDirectRoiComparison(calculateComparison(currentData.getDirectRoi(), previousData != null ? previousData.getDirectRoi() : null));
         currentData.setDirectCirComparison(calculateComparison(currentData.getDirectCir(), previousData != null ? previousData.getDirectCir() : null));
         currentData.setDirectCrComparison(calculateComparison(currentData.getDirectCr(), previousData != null ? previousData.getDirectCr() : null));
+        currentData.setBroadGmvComparison(calculateComparison(currentData.getBroadGmv(), previousData != null ? previousData.getBroadGmv() : null));
     }
 
     private Double calculateComparison(Double currentValue, Double previousValue) {
@@ -274,6 +275,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .avg("data.entry_list.report.direct_cr").as("avgDirectCr")
                 .avg("data.entry_list.report.broad_roi").as("avgRoas")
                 .avg("data.entry_list.report.cr").as("avgCr")
+                .avg("data.entry_list.report.broad_order").as("totalBroadOrder")
+                .avg("data.entry_list.report.broad_order_amount").as("totalBroadOrderAmount")
+                .sum("data.entry_list.report.cpdc").as("totalCpdc")
                 .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
                 .first("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
                 .first("data.entry_list.type").as("type")
@@ -301,7 +305,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("avgDirectCr").as("directCr")
                 .and("avgRoas").as("roas")
                 .and("avgCr").as("cr")
-                .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title", "customRoas")
+                .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title", "customRoas", "totalBroadGmv", "totalBroadOrder", "totalBroadOrderAmount", "totalCpdc")
         );
 
         AggregationResults<Document> results = mongoTemplate.aggregate(
@@ -342,6 +346,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .hasCustomRoas(false)
                 .image(getString(doc, "image"))
                 .customRoas(getDouble(doc, "customRoas"))
+                .broadOrder(getDouble(doc, "totalBroadOrder"))
+                .broadOrderAmount(getDouble(doc, "totalBroadOrderAmount"))
+                .cpdc(getDouble(doc, "totalCpdc"))
                 .build();
     }
 
