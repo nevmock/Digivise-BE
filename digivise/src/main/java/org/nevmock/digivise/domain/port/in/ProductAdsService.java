@@ -41,7 +41,7 @@ public interface ProductAdsService {
         // hasKeywords is removed
     );
 
-    boolean insertCustomRoas(String shopId, Long campaignId, Double customRoas, Long from, Long to);
+    boolean insertCustomRoas(String shopId, Long campaignId, Double customRoas, LocalDateTime from, LocalDateTime to);
 
     ProductAdsNewestResponseDto findByCampaignId(Long campaignId);
 }

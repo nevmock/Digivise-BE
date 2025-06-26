@@ -280,6 +280,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .first("data.entry_list.state").as("state")
                 .first("data.entry_list.title").as("title")
                 .first("data.entry_list.image").as("image")
+                .first("data.entry_list.custom_roas").as("customRoas")
         );
 
         ops.add(Aggregation.project()
@@ -300,7 +301,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("avgDirectCr").as("directCr")
                 .and("avgRoas").as("roas")
                 .and("avgCr").as("cr")
-                .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title")
+                .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title", "customRoas")
         );
 
         AggregationResults<Document> results = mongoTemplate.aggregate(
@@ -340,6 +341,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .title(getString(doc, "title"))
                 .hasCustomRoas(false)
                 .image(getString(doc, "image"))
+                .customRoas(getDouble(doc, "customRoas"))
                 .build();
     }
 
@@ -366,13 +368,16 @@ public class ProductAdsServiceImpl implements ProductAdsService {
     }
 
     @Override
-    public boolean insertCustomRoas(String shopId, Long campaignId, Double customRoas, Long from, Long to) {
+    public boolean insertCustomRoas(String shopId, Long campaignId, Double customRoas, LocalDateTime from, LocalDateTime to) {
         try {
+            long timestampFrom = from.atZone(ZoneId.systemDefault()).toEpochSecond();
+            long timestampTo = to.atZone(ZoneId.systemDefault()).toEpochSecond();
+
             Query query = new Query();
             query.addCriteria(
                     Criteria.where("shop_id").is(shopId)
-                            .and("from").is(from)
-                            .and("to").is(to)
+                            .and("from").gte(timestampFrom)
+                            .and("to").lte(timestampTo)
                             .and("data.entry_list.campaign.campaign_id").is(campaignId)
             );
 
@@ -381,6 +386,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             update.set("data.entry_list.$.custom_roas_updated_at", LocalDateTime.now());
 
             var result = mongoTemplate.updateMulti(query, update, "ProductAds");
+
+            System.out.println("Custom ROAS inserted/updated: " + result.toString());
 
             return result.getModifiedCount() > 0;
 

@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 //@NoArgsConstructor
 //@AllArgsConstructor
 //@Builder
@@ -37,4 +39,5 @@ public class ModelStockDto {
     private Integer sellableStock;
     private Integer inTransitStock;
     private Integer soldCount;
+    private LocalDateTime createdAt;
 }

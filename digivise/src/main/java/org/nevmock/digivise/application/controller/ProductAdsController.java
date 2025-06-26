@@ -154,8 +154,8 @@ public class ProductAdsController {
             @RequestParam String shopId,
             @RequestParam Long campaignId,
             @RequestParam Double customRoas,
-            @RequestParam Long from,
-            @RequestParam Long to
+            @RequestParam LocalDateTime from,
+            @RequestParam LocalDateTime to
     ) {
         boolean success = productAdsService.insertCustomRoas(shopId, campaignId, customRoas, from, to);
 

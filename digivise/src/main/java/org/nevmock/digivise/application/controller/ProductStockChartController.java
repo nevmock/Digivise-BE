@@ -1,13 +1,14 @@
 package org.nevmock.digivise.application.controller;
 
-
 import lombok.RequiredArgsConstructor;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsResponseWrapperDto;
 import org.nevmock.digivise.application.dto.product.performance.ProductPerformanceWrapperDto;
+import org.nevmock.digivise.application.dto.product.stock.ProductStockChartWrapperDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseWrapperDto;
 import org.nevmock.digivise.domain.port.in.ProductAdsService;
 import org.nevmock.digivise.domain.port.in.ProductPerformanceService;
+import org.nevmock.digivise.domain.port.in.ProductStockChartService;
 import org.nevmock.digivise.domain.port.in.ProductStockService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,30 +18,28 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/product-stock")
 @RequiredArgsConstructor
-public class ProductStockController {
-    private final ProductStockService productStockService;
+public class ProductStockChartController {
+    private final ProductStockChartService productStockService;
 
-    @GetMapping("/by-shop")
-    public ResponseEntity<Page<ProductStockResponseWrapperDto>> getProductStockByShop(
+    @GetMapping("/chart")
+    public ResponseEntity<List<ProductStockChartWrapperDto>> getProductStockByShop(
             @RequestParam String shopId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime from1,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime to1,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String state
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            Long productId
     ) {
-        PageRequest pageRequest = PageRequest.of(page, limit);
-        return ResponseEntity.ok(productStockService.findByRange(shopId, from1, to1, name, state, pageRequest));
+        return ResponseEntity.ok(productStockService.findStockChartByRange(shopId, from1, to1, productId));
     }
 }
-

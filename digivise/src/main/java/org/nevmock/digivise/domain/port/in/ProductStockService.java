@@ -16,22 +16,30 @@ public interface ProductStockService {
 //            Pageable pageable
 //    );
 
-    Page<ProductStockResponseWrapperDto> findByShopId(
-            String shopId,
-            LocalDateTime from,
-            LocalDateTime to,
-            String name,
-            Pageable pageable
-    );
+//    Page<ProductStockResponseWrapperDto> findByShopId(
+//            String shopId,
+//            LocalDateTime from,
+//            LocalDateTime to,
+//            String name,
+//            Pageable pageable
+//    );
 
-    Page<ProductStockResponseWrapperDto> findByRange(
-            String shopId,
-            LocalDateTime from1,
-            LocalDateTime to1,
-            LocalDateTime from2,
-            LocalDateTime to2,
-            String name,
-            String state,
-            Pageable pageable
-    );
+//    Page<ProductStockResponseWrapperDto> findByRange(
+//            String shopId,
+//            LocalDateTime from1,
+//            LocalDateTime to1,
+//            LocalDateTime from2,
+//            LocalDateTime to2,
+//            String name,
+//            String state,
+//            Pageable pageable
+//    );
+Page<ProductStockResponseWrapperDto> findByRange(
+        String shopId,
+        LocalDateTime from,
+        LocalDateTime to,
+        String name,
+        String state,
+        Pageable pageable
+);
 }

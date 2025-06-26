@@ -196,6 +196,7 @@ public class ProductAdsResponseDto {
     private Double calculatedRoas;
     private String insightRoas;
     private Boolean hasCustomRoas;
+    private Double customRoas;
 
     private String image;
 }
