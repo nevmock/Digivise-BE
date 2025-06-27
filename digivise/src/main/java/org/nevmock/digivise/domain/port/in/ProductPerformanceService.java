@@ -14,6 +14,8 @@ public interface ProductPerformanceService {
             LocalDateTime from2,
             LocalDateTime to2,
             String name,
+            Integer status,
+            String salesClassification,
             Pageable pageable
     );
 }

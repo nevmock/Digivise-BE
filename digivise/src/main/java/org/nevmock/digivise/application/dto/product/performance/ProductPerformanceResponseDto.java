@@ -97,4 +97,18 @@ public class ProductPerformanceResponseDto {
     private Double confirmedSalesComparison;
     private Double confirmedUnitsComparison;
     private Double confirmedBuyersComparison;
+    private Double uvToAddToCartRate;
+    private Double uvToPlacedBuyersRate;
+    private Double uvToConfirmedBuyersRate;
+    private Double placedBuyersToConfirmedBuyersRate;
+    private Double uvToPaidBuyersRate;
+    private Double confirmedSellRatio;
+
+    private Double uvToAddToCartRateComparison;
+    private Double uvToPlacedBuyersRateComparison;
+    private Double uvToPlacedUnitsRateComparison;
+    private Double uvToConfirmedBuyersRateComparison;
+    private Double placedBuyersToConfirmedBuyersRateComparison;
+    private Double ConfirmedSellRatioComparison;
+    private Double uvToPaidBuyersRateComparison;
 }

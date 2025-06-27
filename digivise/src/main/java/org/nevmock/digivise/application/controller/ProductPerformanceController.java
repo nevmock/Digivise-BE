@@ -38,6 +38,10 @@ public class ProductPerformanceController {
             LocalDateTime to2,
             @RequestParam(required = false)
             String name,
+            @RequestParam(required = false)
+            Integer status,
+            @RequestParam(required = false)
+            String salesClassification,
             @RequestParam(defaultValue = "0")
             int page,
             @RequestParam(defaultValue = "10")
@@ -45,6 +49,6 @@ public class ProductPerformanceController {
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
 
-        return ResponseEntity.ok(productPerformanceService.findByRange(shopId, from1, to1, from2, to2, name, pageRequest));
+        return ResponseEntity.ok(productPerformanceService.findByRange(shopId, from1, to1, from2, to2, name, status, salesClassification, pageRequest));
     }
 }

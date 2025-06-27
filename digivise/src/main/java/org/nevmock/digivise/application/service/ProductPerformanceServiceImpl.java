@@ -39,16 +39,18 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             LocalDateTime from2,
             LocalDateTime to2,
             String name,
+            Integer status,
+            String salesClassification,
             Pageable pageable
     ) {
-        
+
         List<ProductPerformanceResponseDto> period1DataList = getAggregatedDataByProductForRange(
-                shopId, name, from1, to1
+                shopId, name, status, salesClassification, from1, to1
         );
 
-        
+
         Map<Long, ProductPerformanceResponseDto> period2DataMap = getAggregatedDataByProductForRange(
-                shopId, name, from2, to2
+                shopId, name, status, salesClassification, from2, to2
         ).stream()
                 .collect(Collectors.toMap(ProductPerformanceResponseDto::getProductId, Function.identity()));
 
@@ -56,11 +58,11 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        
+
         List<ProductPerformanceWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
             ProductPerformanceResponseDto period2Data = period2DataMap.get(period1Data.getProductId());
 
-            
+
             populateComparisonFields(period1Data, period2Data);
 
             return ProductPerformanceWrapperDto.builder()
@@ -74,7 +76,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                     .build();
         }).collect(Collectors.toList());
 
-        
+
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), resultList.size());
 
@@ -89,10 +91,12 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             String shopId,
             LocalDateTime from,
             LocalDateTime to,
-            String name,
+            String search,
+            Integer status,
+            String salesClassification,
             Pageable pageable
     ) {
-        
+
         List<AggregationOperation> ops = new ArrayList<>();
 
         long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
@@ -105,10 +109,21 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
 
         ops.add(Aggregation.unwind("data"));
 
-        if (name != null && !name.trim().isEmpty()) {
-            Criteria nameFilter = Criteria.where("data.name")
-                    .regex(".*" + name.trim() + ".*", "i");
-            ops.add(Aggregation.match(nameFilter));
+        // Filter by search (product name)
+        if (search != null && !search.trim().isEmpty()) {
+            Criteria searchFilter = Criteria.where("data.name")
+                    .regex(".*" + search.trim() + ".*", "i");
+            ops.add(Aggregation.match(searchFilter));
+        }
+
+        // Filter by status
+        if (status != null) {
+            ops.add(Aggregation.match(Criteria.where("data.status").is(status)));
+        }
+
+        // Filter by sales classification
+        if (salesClassification != null && !salesClassification.trim().isEmpty()) {
+            ops.add(Aggregation.match(getSalesClassificationCriteria(salesClassification)));
         }
 
         ops.add(Aggregation.project()
@@ -137,9 +152,14 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .and("data.confirmed_sales").as("confirmedSales")
                 .and("data.confirmed_units").as("confirmedUnits")
                 .and("data.confirmed_buyers").as("confirmedBuyers")
+                .and("data.uv_to_add_to_cart_rate").as("uvToAddToCartRate")
+                .and("data.uv_to_placed_buyers_rate").as("uvToPlacedBuyersRate")
+                .and("data.uv_to_confirmed_buyers_rate").as("uvToConfirmedBuyersRate")
+                .and("data.placed_buyers_to_confirmed_buyers_rate").as("placedBuyersToConfirmedBuyersRate")
+                .and("data.placed_to_paid_buyers_rate").as("confirmedSellRatio")
         );
 
-        
+
         ops.add(Aggregation.skip(pageable.getOffset()));
         ops.add(Aggregation.limit(pageable.getPageSize()));
 
@@ -241,6 +261,33 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 currentData.getConfirmedBuyers() != null ? currentData.getConfirmedBuyers().doubleValue() : null,
                 previousData != null && previousData.getConfirmedBuyers() != null ? previousData.getConfirmedBuyers().doubleValue() : null
         ));
+
+        currentData.setUvToAddToCartRateComparison(calculateComparison(
+                currentData.getUvToAddToCartRate(),
+                previousData != null ? previousData.getUvToAddToCartRate() : null
+        ));
+        currentData.setUvToPlacedBuyersRateComparison(calculateComparison(
+                currentData.getUvToPlacedBuyersRate(),
+                previousData != null ? previousData.getUvToPlacedBuyersRate() : null
+        ));
+        currentData.setUvToConfirmedBuyersRateComparison(calculateComparison(
+                currentData.getUvToConfirmedBuyersRate(),
+                previousData != null ? previousData.getUvToConfirmedBuyersRate() : null
+        ));
+        currentData.setPlacedBuyersToConfirmedBuyersRateComparison(calculateComparison(
+                currentData.getPlacedBuyersToConfirmedBuyersRate(),
+                previousData != null ? previousData.getPlacedBuyersToConfirmedBuyersRate() : null
+        ));
+        currentData.setConfirmedSellRatioComparison(calculateComparison(
+                currentData.getConfirmedSellRatio(),
+                previousData != null ? previousData.getConfirmedSellRatio() : null
+        ));
+        currentData.setUvToPaidBuyersRate(
+                calculateComparison(
+                        currentData.getUvToPaidBuyersRate(),
+                        previousData != null ? previousData.getUvToPaidBuyersRate() : null
+                )
+        );
     }
 
     private Double calculateComparison(Double currentValue, Double previousValue) {
@@ -254,7 +301,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
     }
 
     private List<ProductPerformanceResponseDto> getAggregatedDataByProductForRange(
-            String shopId, String name, LocalDateTime from, LocalDateTime to) {
+            String shopId, String search, Integer status, String salesClassification, LocalDateTime from, LocalDateTime to) {
 
         List<AggregationOperation> ops = new ArrayList<>();
 
@@ -267,12 +314,22 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         ));
         ops.add(Aggregation.unwind("data"));
 
-        
-        if (name != null && !name.trim().isEmpty()) {
-            ops.add(Aggregation.match(Criteria.where("data.name").regex(name, "i")));
+        // Filter by search (product name)
+        if (search != null && !search.trim().isEmpty()) {
+            ops.add(Aggregation.match(Criteria.where("data.name").regex(".*" + search.trim() + ".*", "i")));
         }
 
-        
+        // Filter by status
+        if (status != null) {
+            ops.add(Aggregation.match(Criteria.where("data.status").is(status)));
+        }
+
+        // Filter by sales classification
+        if (salesClassification != null && !salesClassification.trim().isEmpty()) {
+            ops.add(Aggregation.match(getSalesClassificationCriteria(salesClassification)));
+        }
+
+
         ops.add(Aggregation.group("data.id")
                 .avg("data.uv").as("avgUv")
                 .avg("data.pv").as("avgPv")
@@ -291,12 +348,18 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .avg("data.confirmed_sales").as("avgConfirmedSales")
                 .avg("data.confirmed_units").as("avgConfirmedUnits")
                 .avg("data.confirmed_buyers").as("avgConfirmedBuyers")
+                .avg("data.uv_to_add_to_cart_rate").as("avgUvToAddToCartRate")
+                .avg("data.uv_to_placed_buyers_rate").as("avgUvToPlacedBuyersRate")
+                .avg("data.uv_to_confirmed_buyers_rate").as("avgUvToConfirmedBuyersRate")
+                .avg("data.placed_buyers_to_confirmed_buyers_rate").as("avgPlacedBuyersToConfirmedBuyersRate")
+                .avg("data.placed_to_paid_buyers_rate").as("avgConfirmedSellRatio")
+                .avg("data.uv_to_paid_buyers_rate").as("avgUvToPaidBuyersRate")
                 .first("data.name").as("name")
                 .first("data.image").as("image")
                 .first("data.status").as("status")
         );
 
-        
+
         ops.add(Aggregation.project()
                 .and("_id").as("productId")
                 .and("avgUv").as("uv")
@@ -316,6 +379,12 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .and("avgConfirmedSales").as("confirmedSales")
                 .and("avgConfirmedUnits").as("confirmedUnits")
                 .and("avgConfirmedBuyers").as("confirmedBuyers")
+                .and("avgUvToAddToCartRate").as("uvToAddToCartRate")
+                .and("avgUvToPlacedBuyersRate").as("uvToPlacedBuyersRate")
+                .and("avgUvToConfirmedBuyersRate").as("uvToConfirmedBuyersRate")
+                .and("avgPlacedBuyersToConfirmedBuyersRate").as("placedBuyersToConfirmedBuyersRate")
+                .and("avgUvToPaidBuyersRate").as("uvToPaidBuyersRate")
+                .and("avgConfirmedSellRatio").as("confirmedSellRatio")
                 .and("from").as("shopeeFrom")
                 .and("to").as("shopeeTo")
                 .andInclude("name", "image", "status")
@@ -328,6 +397,21 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         return results.getMappedResults().stream()
                 .map(this::mapDocumentToAggregatedDto)
                 .collect(Collectors.toList());
+    }
+
+    private Criteria getSalesClassificationCriteria(String salesClassification) {
+        switch (salesClassification.toLowerCase()) {
+            case "high":
+                return Criteria.where("data.confirmed_sales").gte(1000000);
+            case "medium":
+                return Criteria.where("data.confirmed_sales").gte(100000).lt(1000000);
+            case "low":
+                return Criteria.where("data.confirmed_sales").lt(100000);
+            case "no_sales":
+                return Criteria.where("data.confirmed_sales").is(0);
+            default:
+                return new Criteria();
+        }
     }
 
     private ProductPerformanceResponseDto mapDocumentToAggregatedDto(Document doc) {
@@ -353,6 +437,12 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .confirmedSales(getNumberDouble(doc, "confirmedSales"))
                 .confirmedUnits(convertDoubleToLong(getNumberDouble(doc, "confirmedUnits")))
                 .confirmedBuyers(convertDoubleToLong(getNumberDouble(doc, "confirmedBuyers")))
+                .uvToAddToCartRate(getNumberDouble(doc, "uvToAddToCartRate"))
+                .uvToPlacedBuyersRate(getNumberDouble(doc, "uvToPlacedBuyersRate"))
+                .uvToConfirmedBuyersRate(getNumberDouble(doc, "uvToConfirmedBuyersRate"))
+                .placedBuyersToConfirmedBuyersRate(getNumberDouble(doc, "placedBuyersToConfirmedBuyersRate"))
+                .uvToPaidBuyersRate(getNumberDouble(doc, "uvToPaidBuyersRate"))
+                .confirmedSellRatio(getNumberDouble(doc, "confirmedSellRatio"))
                 .shopeeFrom(getNumberLong(doc, "shopeeFrom"))
                 .shopeeTo(getNumberLong(doc, "shopeeTo"))
                 .build();
@@ -389,10 +479,16 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .confirmedSales(getNumberDouble(doc, "confirmedSales"))
                 .confirmedUnits(getNumberLong(doc, "confirmedUnits"))
                 .confirmedBuyers(getNumberLong(doc, "confirmedBuyers"))
+                .uvToAddToCartRate(getNumberDouble(doc, "uvToAddToCartRate"))
+                .uvToPlacedBuyersRate(getNumberDouble(doc, "uvToPlacedBuyersRate"))
+                .uvToConfirmedBuyersRate(getNumberDouble(doc, "uvToConfirmedBuyersRate"))
+                .placedBuyersToConfirmedBuyersRate(getNumberDouble(doc, "placedBuyersToConfirmedBuyersRate"))
+                .uvToPaidBuyersRate(getNumberDouble(doc, "uvToPaidBuyersRate"))
+                .confirmedSellRatio(getNumberDouble(doc, "confirmedSellRatio"))
                 .build();
     }
 
-    
+
     private String getString(Document d, String key) {
         Object v = d.get(key);
         return v instanceof String ? (String) v : null;
@@ -421,11 +517,11 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         return null;
     }
 
-    
+
     public void debugProductPerformanceData(String shopId) {
         System.out.println("=== SIMPLE DEBUG ===");
 
-        
+
         long total = mongoTemplate.count(
                 org.springframework.data.mongodb.core.query.Query.query(
                         Criteria.where("shop_id").is(shopId)
@@ -434,7 +530,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         );
         System.out.println("Total documents with shop_id " + shopId + ": " + total);
 
-        
+
         Document sample = mongoTemplate.findOne(
                 org.springframework.data.mongodb.core.query.Query.query(
                         Criteria.where("shop_id").is(shopId)
@@ -450,11 +546,11 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             System.out.println("No documents found for shop_id: " + shopId);
         }
 
-        
+
         if (sample != null) {
             System.out.println("Available fields: " + sample.keySet());
 
-            
+
             if (sample.containsKey("data")) {
                 Object dataField = sample.get("data");
                 System.out.println("Data field type: " + dataField.getClass().getSimpleName());
@@ -468,7 +564,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 }
             }
 
-            
+
             if (sample.containsKey("createdAt")) {
                 Object createdAt = sample.get("createdAt");
                 System.out.println("CreatedAt field type: " + createdAt.getClass().getSimpleName());
