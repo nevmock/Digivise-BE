@@ -280,4 +280,6 @@ public class ProductStockResponseDto {
     private Double sellingPriceMaxComparison;
     private Double maxDiscountPercentageComparison;
     private Double maxDiscountComparison;
+
+    private String salesAvailability;
 }

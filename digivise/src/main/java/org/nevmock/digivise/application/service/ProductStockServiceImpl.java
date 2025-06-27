@@ -170,6 +170,13 @@ public class ProductStockServiceImpl implements ProductStockService {
     }
 
     private ProductStockResponseDto mapToDto(Document doc) {
+        Long totalStock = (getLong(doc, "totalAvailableStock") + getLong(doc, "soldCount"));
+        Long currentStockPercentage = totalStock > 0
+                ? (getLong(doc, "totalAvailableStock") * 100) / totalStock
+                : 0L;
+
+        String salesAvailability = currentStockPercentage <= 70 ? "Stock mencapai 70% kebawah" : "Stock diatas 70%";
+
         ProductStockResponseDto dto = ProductStockResponseDto.builder()
                 .id(getObjectIdAsString(doc, "id"))
                 .uuid(getString(doc, "uuid"))
@@ -224,6 +231,9 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .canNotAppealTransifyKey(getString(doc, "canNotAppealTransifyKey"))
                 .referenceId(getLong(doc, "referenceId"))
                 .appealStatus(getInteger(doc, "appealStatus"))
+                .salesAvailability(
+                        salesAvailability
+                )
                 .build();
 
         // Map model stocks
