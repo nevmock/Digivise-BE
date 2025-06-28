@@ -19,10 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -103,13 +100,21 @@ public class ProductPerformanceChartServiceImpl implements ProductPerformanceCha
                 .collect(Collectors.toList());
 
         
-        int total = wrappers.size();
+//        int total = wrappers.size();
+//        int start = (int) pageable.getOffset();
+//        int end = Math.min(start + pageable.getPageSize(), total);
+//        List<ProductPerformanceChartWrapperDto> pageContent =
+//                start >= total ? List.of() : wrappers.subList(start, end);
+//
+//        return new PageImpl<>(pageContent, pageable, total);
         int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), total);
-        List<ProductPerformanceChartWrapperDto> pageContent =
-                start >= total ? List.of() : wrappers.subList(start, end);
+        int end = Math.min((start + pageable.getPageSize()), wrappers.size());
 
-        return new PageImpl<>(pageContent, pageable, total);
+        if (start > wrappers.size()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, wrappers.size());
+        }
+
+        return new PageImpl<>(wrappers.subList(start, end), pageable, wrappers.size());
     }
 
     private ProductPerformanceChartResponseDto toChartDto(Document doc) {

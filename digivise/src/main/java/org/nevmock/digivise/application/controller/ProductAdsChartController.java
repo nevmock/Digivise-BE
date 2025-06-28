@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.nevmock.digivise.application.dto.product.ads.ProductAdsChartWrapperDto;
 import org.nevmock.digivise.domain.port.in.ProductAdsChartService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,8 +25,12 @@ public class ProductAdsChartController {
             @RequestParam String shopId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            Pageable pageable
+            @RequestParam(defaultValue = "0")
+            int page,
+            @RequestParam(defaultValue = "10")
+            int limit
     ) {
-        return productAdsChartService.findMetricsByRange(shopId, from, to, pageable);
+        PageRequest pageRequest = PageRequest.of(page, limit);
+        return productAdsChartService.findMetricsByRange(shopId, from, to, pageRequest);
     }
 }
