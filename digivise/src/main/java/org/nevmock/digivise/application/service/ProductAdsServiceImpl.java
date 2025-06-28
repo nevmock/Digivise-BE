@@ -261,13 +261,13 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         ops.add(Aggregation.group("data.entry_list.campaign.campaign_id")
                 .sum("data.entry_list.report.cost").as("totalCost")
-                .sum("data.entry_list.campaign.daily_budget").as("dailyBudget")
-                .avg("data.entry_list.report.impression").as("totalImpression")
-                .avg("data.entry_list.report.click").as("totalClick")
+                .avg("data.entry_list.campaign.daily_budget").as("dailyBudget")
+                .sum("data.entry_list.report.impression").as("totalImpression")
+                .sum("data.entry_list.report.click").as("totalClick")
                 .avg("data.entry_list.report.broad_gmv").as("totalBroadGmv")
-                .sum("data.entry_list.report.direct_gmv").as("totalDirectGmv")
+                .avg("data.entry_list.report.direct_gmv").as("totalDirectGmv")
                 .avg("data.entry_list.report.direct_order").as("totalDirectOrder")
-                .avg("data.entry_list.report.direct_order_amount").as("totalDirectOrderAmount")
+                .sum("data.entry_list.report.direct_order_amount").as("totalDirectOrderAmount")
                 .avg("data.entry_list.report.cpc").as("avgCpc")
                 .avg("data.entry_list.report.broad_cir").as("avgAcos")
                 .avg("data.entry_list.report.ctr").as("avgCtr")
@@ -277,7 +277,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .avg("data.entry_list.report.broad_roi").as("avgRoas")
                 .avg("data.entry_list.report.cr").as("avgCr")
                 .avg("data.entry_list.report.broad_order").as("totalBroadOrder")
-                .avg("data.entry_list.report.broad_order_amount").as("totalBroadOrderAmount")
+                .sum("data.entry_list.report.broad_order_amount").as("totalBroadOrderAmount")
                 .sum("data.entry_list.report.cpdc").as("totalCpdc")
                 .first("data.entry_list.manual_product_ads.bidding_strategy").as("biddingStrategy")
                 .first("data.entry_list.manual_product_ads.product_placement").as("productPlacement")
@@ -290,7 +290,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         ops.add(Aggregation.project()
                 .and("_id").as("campaignId")
-                .and("totalCost").divide(10.0).as("cost")
+                .and("totalCost").divide(100000.0).as("cost")
                 .and("avgCpc").divide(100000.0).as("cpc")
                 .and("avgAcos").as("acos")
                 .and("avgCtr").as("ctr")
@@ -306,7 +306,9 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("avgDirectCr").as("directCr")
                 .and("avgRoas").as("roas")
                 .and("avgCr").as("cr")
-                .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title", "customRoas", "totalBroadGmv", "totalBroadOrder", "totalBroadOrderAmount", "totalCpdc")
+                .and("totalCpdc").divide(100000.0).as("cpdc")
+                .and("totalBroadGmv").divide(100000.0).as("broadGmv")
+                .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title", "customRoas", "totalBroadOrder", "totalBroadOrderAmount")
         );
 
         AggregationResults<Document> results = mongoTemplate.aggregate(
