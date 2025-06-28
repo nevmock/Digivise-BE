@@ -176,6 +176,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 : 0L;
 
         String salesAvailability = currentStockPercentage <= 70 ? "Stock mencapai 70% kebawah" : "Stock diatas 70%";
+        Boolean isSalesAvailable = currentStockPercentage > 70;
 
         ProductStockResponseDto dto = ProductStockResponseDto.builder()
                 .id(getObjectIdAsString(doc, "id"))
@@ -234,6 +235,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .salesAvailability(
                         salesAvailability
                 )
+                .isSalesAvailable(isSalesAvailable)
                 .build();
 
         // Map model stocks

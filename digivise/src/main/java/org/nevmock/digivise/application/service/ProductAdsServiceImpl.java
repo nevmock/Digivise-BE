@@ -211,6 +211,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         currentData.setDirectCirComparison(calculateComparison(currentData.getDirectCir(), previousData != null ? previousData.getDirectCir() : null));
         currentData.setDirectCrComparison(calculateComparison(currentData.getDirectCr(), previousData != null ? previousData.getDirectCr() : null));
         currentData.setBroadGmvComparison(calculateComparison(currentData.getBroadGmv(), previousData != null ? previousData.getBroadGmv() : null));
+        currentData.setDailyBudgetComparison(calculateComparison(currentData.getDailyBudget(), previousData != null ? previousData.getDailyBudget() : null));
     }
 
     private Double calculateComparison(Double currentValue, Double previousValue) {
