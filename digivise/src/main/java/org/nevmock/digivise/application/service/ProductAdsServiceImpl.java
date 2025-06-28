@@ -433,6 +433,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
         // --- Ekstrak field dari entry ---
         String title = entry.getString("title");
+        String image = entry.getString("image");
 
         // Campaign
         Document campaign = entry.get("campaign", Document.class);
@@ -469,6 +470,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .biddingType(biddingType)
                 .productPlacement(productPlacement)
                 .adsPeriod(period)
+                .image(image)
                 .build();
     }
 }

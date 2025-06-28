@@ -157,6 +157,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .and("data.uv_to_confirmed_buyers_rate").as("uvToConfirmedBuyersRate")
                 .and("data.placed_buyers_to_confirmed_buyers_rate").as("placedBuyersToConfirmedBuyersRate")
                 .and("data.placed_to_paid_buyers_rate").as("confirmedSellRatio")
+
         );
 
 

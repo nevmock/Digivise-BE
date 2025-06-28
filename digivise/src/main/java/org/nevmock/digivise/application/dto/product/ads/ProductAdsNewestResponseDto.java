@@ -14,4 +14,5 @@ public class ProductAdsNewestResponseDto {
     private String biddingType;
     private String productPlacement;
     private String adsPeriod;
+    private String image;
 }
