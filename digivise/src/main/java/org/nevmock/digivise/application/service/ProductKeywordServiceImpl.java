@@ -169,11 +169,15 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         ProjectionOperation project = Aggregation.project()
                 .and("_id.campaignId").as("campaignId")
                 .and("_id.keyword").as("keyword")
+                .and("broadGmv").divide(100000.0).as("broadGmv")
+                .and("cost").divide(100000.0).as("cost")
+                .and("cpc").divide(100000.0).as("cpc")
+                .and("cpdc").divide(100000.0).as("cpdc")
+                .and("directGmv").divide(100000.0).as("directGmv")
                 .andInclude(
-                        "broadCir", "broadGmv", "broadOrder", "broadOrderAmount",
-                        "broadRoi", "checkout", "checkoutRate", "click", "cost",
-                        "cpc", "cpdc", "cr", "ctr", "directCr", "directCir",
-                        "directGmv", "directOrder", "directOrderAmount", "directRoi",
+                        "broadCir", "broadOrder", "broadOrderAmount",
+                        "broadRoi", "checkout", "checkoutRate", "click", "cr", "ctr", "directCr", "directCir",
+                        "directOrder", "directOrderAmount", "directRoi",
                         "impression", "avgRank", "productClick", "productImpression",
                         "productCtr", "locationInAds", "reach", "pageViews",
                         "uniqueVisitors", "view", "cpm", "uniqueClickUser"
