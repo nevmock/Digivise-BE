@@ -204,4 +204,9 @@ public class ProductAdsResponseDto {
     private Double cpdc;
 
     private String image;
+
+    private Long campaignStartTime;
+    private Long campaignEndTime;
+
+    private String period;
 }
