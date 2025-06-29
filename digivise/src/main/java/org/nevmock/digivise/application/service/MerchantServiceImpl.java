@@ -321,7 +321,6 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         user.setActiveMerchant(merchant);
-        merchant.setLastLogin(Timestamp.from(Instant.now()));
         userRepository.save(user);
 
         return toDto(merchant,
