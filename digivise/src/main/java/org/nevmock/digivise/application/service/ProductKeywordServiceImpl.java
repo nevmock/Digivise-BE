@@ -215,7 +215,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     private void populateComparisonFields(ProductKeywordResponseDto current, ProductKeywordResponseDto previous) {
         if (previous == null) return;
 
-        current.setBroadCirComparison(roundDouble(calculateChange(current.getBroadCir(), previous.getBroadCir())));
+        current.setAcos(roundDouble(calculateChange(current.getAcos(), previous.getAcos())));
         current.setBroadGmvComparison(roundDouble(calculateChange(current.getBroadGmv(), previous.getBroadGmv())));
         current.setBroadOrderComparison(roundDouble(calculateChange(current.getBroadOrder(), previous.getBroadOrder())));
         current.setBroadOrderAmountComparison(roundDouble(calculateChange(current.getBroadOrderAmount(), previous.getBroadOrderAmount())));
@@ -258,7 +258,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         return MathKt.renderInsight(
                 MathKt.formulateRecommendation(
                         dto.getCpc(),
-                        dto.getBroadCir(),
+                        dto.getAcos(),
                         dto.getClick(),
                         kpi,
                         null,

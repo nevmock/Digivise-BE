@@ -25,7 +25,7 @@ public class ProductKeywordResponseDto {
     private Long campaignId;
     private String type;
 
-    private Double broadCir;
+    private Double acos;
     private Double broadGmv;
     private Double broadOrder;
     private Double broadOrderAmount;
@@ -59,7 +59,7 @@ public class ProductKeywordResponseDto {
 
     private String insight;
 
-    private Double broadCirComparison;
+    private Double acosComparison;
     private Double broadGmvComparison;
     private Double broadOrderComparison;
     private Double broadOrderAmountComparison;
