@@ -132,7 +132,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         );
 
         GroupOperation group = Aggregation.group("campaignId", "keyword")
-                .avg("metrics.broad_cir").as("broadCir")
+                .avg("metrics.broad_cir").as("acos")
                 .avg("metrics.broad_gmv").as("broadGmv")
                 .avg("metrics.broad_order").as("broadOrder")
                 .sum("metrics.broad_order_amount").as("broadOrderAmount")
@@ -174,7 +174,7 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                 .and("cpc").divide(100000.0).as("cpc")
                 .and("cpdc").divide(100000.0).as("cpdc")
                 .and("directGmv").divide(100000.0).as("directGmv")
-                .and(ArithmeticOperators.Round.roundValueOf("broadCir").place(2)).as("broadCir")
+                .and(ArithmeticOperators.Round.roundValueOf("broadCir").place(2)).as("acos")
                 .and(ArithmeticOperators.Round.roundValueOf("broadOrder").place(2)).as("broadOrder")
                 .and("broadOrderAmount").as("broadOrderAmount")
                 .and(ArithmeticOperators.Round.roundValueOf("broadRoi").place(2)).as("broadRoi")
