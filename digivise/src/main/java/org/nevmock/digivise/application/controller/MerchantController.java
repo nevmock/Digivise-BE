@@ -76,4 +76,15 @@ public class MerchantController {
         MerchantInfoResponseDto merchant = merchantService.otpLoginMerchant(merchantOtpLoginDto.getUsername(), UUID.fromString(merchantOtpLoginDto.getMerchantId()), merchantOtpLoginDto.getOtp());
         return ResponseEntity.ok(merchant);
     }
+
+    @GetMapping("/switch")
+    public ResponseEntity<MerchantResponseDto> switchMerchant(
+            @RequestParam
+            String merchantId
+    ) {
+        UUID uuid = UUID.fromString(merchantId.trim());
+
+        MerchantResponseDto merchant = merchantService.switchMerchant(uuid);
+        return ResponseEntity.ok(merchant);
+    }
 }

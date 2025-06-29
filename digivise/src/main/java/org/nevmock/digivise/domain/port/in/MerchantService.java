@@ -5,6 +5,7 @@ import org.nevmock.digivise.application.dto.merchant.MerchantRequestDto;
 import org.nevmock.digivise.application.dto.merchant.MerchantResponseDto;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface MerchantService {
@@ -25,4 +26,6 @@ public interface MerchantService {
     Boolean loginMerchant(String username, String password);
 
     MerchantInfoResponseDto otpLoginMerchant(String username, UUID merchantId, String otpCode);
+
+    MerchantResponseDto switchMerchant(UUID merchantId);
 }

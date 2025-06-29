@@ -303,4 +303,29 @@ public class MerchantServiceImpl implements MerchantService {
             return null;
         }
     }
+
+    @Override
+    public MerchantResponseDto switchMerchant(UUID merchantId) {
+        User user = Objects.requireNonNull(getCurrentUser(userRepository))
+                .orElseThrow(() -> new RuntimeException("User not found!"));
+
+        Optional<Merchant> merchantOpt = merchantRepository.findById(merchantId);
+        if (merchantOpt.isEmpty()) {
+            throw new RuntimeException("Merchant not found with ID: " + merchantId);
+        }
+
+        Merchant merchant = merchantOpt.get();
+
+        if (merchant.getMerchantShopeeId() == null || merchant.getMerchantShopeeId().isEmpty()) {
+            throw new RuntimeException("Merchant Shopee ID is not set for Merchant ID: " + merchantId);
+        }
+
+        user.setActiveMerchant(merchant);
+        merchant.setLastLogin(Timestamp.from(Instant.now()));
+        userRepository.save(user);
+
+        return toDto(merchant,
+                kpiRepository.findByMerchantId(merchantId)
+                        .orElseThrow(() -> new RuntimeException("KPI not found with Merchant ID: " + merchantId)));
+    }
 }

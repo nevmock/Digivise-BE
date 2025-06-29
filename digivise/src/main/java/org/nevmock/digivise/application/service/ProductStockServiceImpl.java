@@ -39,11 +39,11 @@ public class ProductStockServiceImpl implements ProductStockService {
     ) {
         List<AggregationOperation> ops = new ArrayList<>();
 
-        // Convert LocalDateTime to Instant for UTC
+        
         Instant fromInstant = from != null ? from.atZone(ZoneId.systemDefault()).toInstant() : null;
         Instant toInstant = to != null ? to.atZone(ZoneId.systemDefault()).toInstant() : null;
 
-        // Match by shop_id and date range
+        
         Criteria criteria = Criteria.where("shop_id").is(shopId);
         Criteria dateRange = Criteria.where("createdAt");
         if (fromInstant != null) {
@@ -57,31 +57,31 @@ public class ProductStockServiceImpl implements ProductStockService {
         }
         ops.add(Aggregation.match(criteria));
 
-        // Unwind the data array
+        
         ops.add(Aggregation.unwind("data"));
 
-        // Filter by name if provided
+        
         if (name != null && !name.trim().isEmpty()) {
             Criteria nameFilter = Criteria.where("data.name")
                     .regex(".*" + name.trim() + ".*", "i");
             ops.add(Aggregation.match(nameFilter));
         }
 
-        // Sort by createdAt descending to get the latest records first
+        
         ops.add(Aggregation.sort(Sort.Direction.DESC, "createdAt"));
 
-        // Group by product ID and take the first (latest) record for each product
+        
         ops.add(Aggregation.group("data.id")
                 .first("$$ROOT").as("latestRecord")
         );
 
-        // Project the latest record data with correct field paths
+        
         ProjectionOperation projectOperation = Aggregation.project()
                 .and("latestRecord._id").as("id")
                 .and("latestRecord.uuid").as("uuid")
                 .and("latestRecord.createdAt").as("createdAt")
                 .and("latestRecord.shop_id").as("shopId")
-                .and("_id").as("productId") // Grouped field (product ID)
+                .and("_id").as("productId") 
                 .and("latestRecord.data.name").as("name")
                 .and("latestRecord.data.status").as("status")
                 .and("latestRecord.data.cover_image").as("coverImage")
@@ -130,21 +130,21 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .and("latestRecord.data.appeal_info.ipr_appeal_info.can_not_appeal_transify_key").as("canNotAppealTransifyKey")
                 .and("latestRecord.data.appeal_info.ipr_appeal_info.reference_id").as("referenceId")
                 .and("latestRecord.data.appeal_info.ipr_appeal_info.appeal_status").as("appealStatus")
-                .and("latestRecord.data.model_list").as("modelList"); // Correct field name
+                .and("latestRecord.data.model_list").as("modelList"); 
 
         ops.add(projectOperation);
 
-        // Count total elements without pagination
+        
         Aggregation countAggregation = Aggregation.newAggregation(ops);
         long total = mongoTemplate.aggregate(countAggregation, "ProductStock", Document.class)
                 .getMappedResults().size();
 
-        // Add pagination
+        
         ops.add(Aggregation.skip(pageable.getOffset()));
         ops.add(Aggregation.limit(pageable.getPageSize()));
 
         Aggregation aggregation = Aggregation.newAggregation(ops);
-        System.out.println("Aggregation Pipeline: " + aggregation); // Debugging
+        System.out.println("Aggregation Pipeline: " + aggregation); 
 
         AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "ProductStock", Document.class);
         List<Document> mappedResults = results.getMappedResults();
@@ -153,7 +153,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
 
-        // Create wrapper DTOs
+        
         List<ProductStockResponseWrapperDto> wrappers = dtos.stream()
                 .map(dto -> ProductStockResponseWrapperDto.builder()
                         .productId(dto.getProductId())
@@ -238,7 +238,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .isSalesAvailable(isSalesAvailable)
                 .build();
 
-        // Map model stocks
+        
         List<Document> modelList = doc.get("modelList", List.class);
         if (modelList != null) {
             LocalDateTime parentCreated = dto.getCreatedAt();
@@ -273,7 +273,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .build();
     }
 
-    // Helper methods for safe type conversion
+    
     private String getString(Document doc, String key) {
         if (doc == null) return null;
         Object value = doc.get(key);

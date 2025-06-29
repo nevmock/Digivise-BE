@@ -109,19 +109,19 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
 
         ops.add(Aggregation.unwind("data"));
 
-        // Filter by search (product name)
+        
         if (search != null && !search.trim().isEmpty()) {
             Criteria searchFilter = Criteria.where("data.name")
                     .regex(".*" + search.trim() + ".*", "i");
             ops.add(Aggregation.match(searchFilter));
         }
 
-        // Filter by status
+        
         if (status != null) {
             ops.add(Aggregation.match(Criteria.where("data.status").is(status)));
         }
 
-        // Filter by sales classification
+        
         if (salesClassification != null && !salesClassification.trim().isEmpty()) {
             ops.add(Aggregation.match(getSalesClassificationCriteria(salesClassification)));
         }
@@ -194,100 +194,144 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
     }
 
     private void populateComparisonFields(ProductPerformanceResponseDto currentData, ProductPerformanceResponseDto previousData) {
-        currentData.setUvComparison(calculateComparison(
-                currentData.getUv() != null ? currentData.getUv().doubleValue() : null,
-                previousData != null && previousData.getUv() != null ? previousData.getUv().doubleValue() : null
-        ));
-        currentData.setPvComparison(calculateComparison(
-                currentData.getPv() != null ? currentData.getPv().doubleValue() : null,
-                previousData != null && previousData.getPv() != null ? previousData.getPv().doubleValue() : null
-        ));
-        currentData.setLikesComparison(calculateComparison(
-                currentData.getLikes() != null ? currentData.getLikes().doubleValue() : null,
-                previousData != null && previousData.getLikes() != null ? previousData.getLikes().doubleValue() : null
-        ));
-        currentData.setBounceVisitorsComparison(calculateComparison(
-                currentData.getBounceVisitors() != null ? currentData.getBounceVisitors().doubleValue() : null,
-                previousData != null && previousData.getBounceVisitors() != null ? previousData.getBounceVisitors().doubleValue() : null
-        ));
-        currentData.setBounceRateComparison(calculateComparison(
-                currentData.getBounceRate(),
-                previousData != null ? previousData.getBounceRate() : null
-        ));
-        currentData.setSearchClicksComparison(calculateComparison(
-                currentData.getSearchClicks() != null ? currentData.getSearchClicks().doubleValue() : null,
-                previousData != null && previousData.getSearchClicks() != null ? previousData.getSearchClicks().doubleValue() : null
-        ));
-        currentData.setAddToCartUnitsComparison(calculateComparison(
-                currentData.getAddToCartUnits() != null ? currentData.getAddToCartUnits().doubleValue() : null,
-                previousData != null && previousData.getAddToCartUnits() != null ? previousData.getAddToCartUnits().doubleValue() : null
-        ));
-        currentData.setAddToCartBuyersComparison(calculateComparison(
-                currentData.getAddToCartBuyers() != null ? currentData.getAddToCartBuyers().doubleValue() : null,
-                previousData != null && previousData.getAddToCartBuyers() != null ? previousData.getAddToCartBuyers().doubleValue() : null
-        ));
-        currentData.setPlacedSalesComparison(calculateComparison(
-                currentData.getPlacedSales(),
-                previousData != null ? previousData.getPlacedSales() : null
-        ));
-        currentData.setPlacedUnitsComparison(calculateComparison(
-                currentData.getPlacedUnits() != null ? currentData.getPlacedUnits().doubleValue() : null,
-                previousData != null && previousData.getPlacedUnits() != null ? previousData.getPlacedUnits().doubleValue() : null
-        ));
-        currentData.setPlacedBuyersComparison(calculateComparison(
-                currentData.getPlacedBuyers() != null ? currentData.getPlacedBuyers().doubleValue() : null,
-                previousData != null && previousData.getPlacedBuyers() != null ? previousData.getPlacedBuyers().doubleValue() : null
-        ));
-        currentData.setPaidSalesComparison(calculateComparison(
-                currentData.getPaidSales(),
-                previousData != null ? previousData.getPaidSales() : null
-        ));
-        currentData.setPaidUnitsComparison(calculateComparison(
-                currentData.getPaidUnits() != null ? currentData.getPaidUnits().doubleValue() : null,
-                previousData != null && previousData.getPaidUnits() != null ? previousData.getPaidUnits().doubleValue() : null
-        ));
-        currentData.setPaidBuyersComparison(calculateComparison(
-                currentData.getPaidBuyers() != null ? currentData.getPaidBuyers().doubleValue() : null,
-                previousData != null && previousData.getPaidBuyers() != null ? previousData.getPaidBuyers().doubleValue() : null
-        ));
-        currentData.setConfirmedSalesComparison(calculateComparison(
-                currentData.getConfirmedSales(),
-                previousData != null ? previousData.getConfirmedSales() : null
-        ));
-        currentData.setConfirmedUnitsComparison(calculateComparison(
-                currentData.getConfirmedUnits() != null ? currentData.getConfirmedUnits().doubleValue() : null,
-                previousData != null && previousData.getConfirmedUnits() != null ? previousData.getConfirmedUnits().doubleValue() : null
-        ));
-        currentData.setConfirmedBuyersComparison(calculateComparison(
-                currentData.getConfirmedBuyers() != null ? currentData.getConfirmedBuyers().doubleValue() : null,
-                previousData != null && previousData.getConfirmedBuyers() != null ? previousData.getConfirmedBuyers().doubleValue() : null
-        ));
+        currentData.setUvComparison(
+                roundDouble(calculateComparison(
+                        currentData.getUv() != null ? currentData.getUv().doubleValue() : null,
+                        previousData != null && previousData.getUv() != null ? previousData.getUv().doubleValue() : null
+                ))
+        );
+        currentData.setPvComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPv() != null ? currentData.getPv().doubleValue() : null,
+                        previousData != null && previousData.getPv() != null ? previousData.getPv().doubleValue() : null
+                ))
+        );
+        currentData.setLikesComparison(
+                roundDouble(calculateComparison(
+                        currentData.getLikes() != null ? currentData.getLikes().doubleValue() : null,
+                        previousData != null && previousData.getLikes() != null ? previousData.getLikes().doubleValue() : null
+                ))
+        );
+        currentData.setBounceVisitorsComparison(
+                roundDouble(calculateComparison(
+                        currentData.getBounceVisitors() != null ? currentData.getBounceVisitors().doubleValue() : null,
+                        previousData != null && previousData.getBounceVisitors() != null ? previousData.getBounceVisitors().doubleValue() : null
+                ))
+        );
+        currentData.setBounceRateComparison(
+                roundDouble(calculateComparison(
+                        currentData.getBounceRate(),
+                        previousData != null ? previousData.getBounceRate() : null
+                ))
+        );
+        currentData.setSearchClicksComparison(
+                roundDouble(calculateComparison(
+                        currentData.getSearchClicks() != null ? currentData.getSearchClicks().doubleValue() : null,
+                        previousData != null && previousData.getSearchClicks() != null ? previousData.getSearchClicks().doubleValue() : null
+                ))
+        );
+        currentData.setAddToCartUnitsComparison(
+                roundDouble(calculateComparison(
+                        currentData.getAddToCartUnits() != null ? currentData.getAddToCartUnits().doubleValue() : null,
+                        previousData != null && previousData.getAddToCartUnits() != null ? previousData.getAddToCartUnits().doubleValue() : null
+                ))
+        );
+        currentData.setAddToCartBuyersComparison(
+                roundDouble(calculateComparison(
+                        currentData.getAddToCartBuyers() != null ? currentData.getAddToCartBuyers().doubleValue() : null,
+                        previousData != null && previousData.getAddToCartBuyers() != null ? previousData.getAddToCartBuyers().doubleValue() : null
+                ))
+        );
+        currentData.setPlacedSalesComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPlacedSales(),
+                        previousData != null ? previousData.getPlacedSales() : null
+                ))
+        );
+        currentData.setPlacedUnitsComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPlacedUnits() != null ? currentData.getPlacedUnits().doubleValue() : null,
+                        previousData != null && previousData.getPlacedUnits() != null ? previousData.getPlacedUnits().doubleValue() : null
+                ))
+        );
+        currentData.setPlacedBuyersComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPlacedBuyers() != null ? currentData.getPlacedBuyers().doubleValue() : null,
+                        previousData != null && previousData.getPlacedBuyers() != null ? previousData.getPlacedBuyers().doubleValue() : null
+                ))
+        );
+        currentData.setPaidSalesComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPaidSales(),
+                        previousData != null ? previousData.getPaidSales() : null
+                ))
+        );
+        currentData.setPaidUnitsComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPaidUnits() != null ? currentData.getPaidUnits().doubleValue() : null,
+                        previousData != null && previousData.getPaidUnits() != null ? previousData.getPaidUnits().doubleValue() : null
+                ))
+        );
+        currentData.setPaidBuyersComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPaidBuyers() != null ? currentData.getPaidBuyers().doubleValue() : null,
+                        previousData != null && previousData.getPaidBuyers() != null ? previousData.getPaidBuyers().doubleValue() : null
+                ))
+        );
+        currentData.setConfirmedSalesComparison(
+                roundDouble(calculateComparison(
+                        currentData.getConfirmedSales(),
+                        previousData != null ? previousData.getConfirmedSales() : null
+                ))
+        );
+        currentData.setConfirmedUnitsComparison(
+                roundDouble(calculateComparison(
+                        currentData.getConfirmedUnits() != null ? currentData.getConfirmedUnits().doubleValue() : null,
+                        previousData != null && previousData.getConfirmedUnits() != null ? previousData.getConfirmedUnits().doubleValue() : null
+                ))
+        );
+        currentData.setConfirmedBuyersComparison(
+                roundDouble(calculateComparison(
+                        currentData.getConfirmedBuyers() != null ? currentData.getConfirmedBuyers().doubleValue() : null,
+                        previousData != null && previousData.getConfirmedBuyers() != null ? previousData.getConfirmedBuyers().doubleValue() : null
+                ))
+        );
 
-        currentData.setUvToAddToCartRateComparison(calculateComparison(
-                currentData.getUvToAddToCartRate(),
-                previousData != null ? previousData.getUvToAddToCartRate() : null
-        ));
-        currentData.setUvToPlacedBuyersRateComparison(calculateComparison(
-                currentData.getUvToPlacedBuyersRate(),
-                previousData != null ? previousData.getUvToPlacedBuyersRate() : null
-        ));
-        currentData.setUvToConfirmedBuyersRateComparison(calculateComparison(
-                currentData.getUvToConfirmedBuyersRate(),
-                previousData != null ? previousData.getUvToConfirmedBuyersRate() : null
-        ));
-        currentData.setPlacedBuyersToConfirmedBuyersRateComparison(calculateComparison(
-                currentData.getPlacedBuyersToConfirmedBuyersRate(),
-                previousData != null ? previousData.getPlacedBuyersToConfirmedBuyersRate() : null
-        ));
-        currentData.setConfirmedSellRatioComparison(calculateComparison(
-                currentData.getConfirmedSellRatio(),
-                previousData != null ? previousData.getConfirmedSellRatio() : null
-        ));
-        currentData.setUvToPaidBuyersRate(
-                calculateComparison(
+        currentData.setUvToAddToCartRateComparison(
+                roundDouble(calculateComparison(
+                        currentData.getUvToAddToCartRate(),
+                        previousData != null ? previousData.getUvToAddToCartRate() : null
+                ))
+        );
+        currentData.setUvToPlacedBuyersRateComparison(
+                roundDouble(calculateComparison(
+                        currentData.getUvToPlacedBuyersRate(),
+                        previousData != null ? previousData.getUvToPlacedBuyersRate() : null
+                ))
+        );
+        currentData.setUvToConfirmedBuyersRateComparison(
+                roundDouble(calculateComparison(
+                        currentData.getUvToConfirmedBuyersRate(),
+                        previousData != null ? previousData.getUvToConfirmedBuyersRate() : null
+                ))
+        );
+        currentData.setPlacedBuyersToConfirmedBuyersRateComparison(
+                roundDouble(calculateComparison(
+                        currentData.getPlacedBuyersToConfirmedBuyersRate(),
+                        previousData != null ? previousData.getPlacedBuyersToConfirmedBuyersRate() : null
+                ))
+        );
+        currentData.setConfirmedSellRatioComparison(
+                roundDouble(calculateComparison(
+                        currentData.getConfirmedSellRatio(),
+                        previousData != null ? previousData.getConfirmedSellRatio() : null
+                ))
+        );
+        currentData.setUvToPaidBuyersRateComparison(
+                roundDouble(calculateComparison(
                         currentData.getUvToPaidBuyersRate(),
                         previousData != null ? previousData.getUvToPaidBuyersRate() : null
-                )
+                ))
         );
     }
 
@@ -315,17 +359,17 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         ));
         ops.add(Aggregation.unwind("data"));
 
-        // Filter by search (product name)
+        
         if (search != null && !search.trim().isEmpty()) {
             ops.add(Aggregation.match(Criteria.where("data.name").regex(".*" + search.trim() + ".*", "i")));
         }
 
-        // Filter by status
+        
         if (status != null) {
             ops.add(Aggregation.match(Criteria.where("data.status").is(status)));
         }
 
-        // Filter by sales classification
+        
         if (salesClassification != null && !salesClassification.trim().isEmpty()) {
             ops.add(Aggregation.match(getSalesClassificationCriteria(salesClassification)));
         }
@@ -425,7 +469,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .pv(convertDoubleToLong(getNumberDouble(doc, "pv")))
                 .likes(convertDoubleToLong(getNumberDouble(doc, "likes")))
                 .bounceVisitors(convertDoubleToLong(getNumberDouble(doc, "bounceVisitors")))
-                .bounceRate(getNumberDouble(doc, "bounceRate"))
+                .bounceRate(roundDouble(getNumberDouble(doc, "bounceRate")))
                 .searchClicks(convertDoubleToLong(getNumberDouble(doc, "searchClicks")))
                 .addToCartUnits(convertDoubleToLong(getNumberDouble(doc, "addToCartUnits")))
                 .addToCartBuyers(convertDoubleToLong(getNumberDouble(doc, "addToCartBuyers")))
@@ -572,5 +616,10 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 System.out.println("CreatedAt value: " + createdAt);
             }
         }
+    }
+
+    private Double roundDouble(Double value) {
+        if (value == null) return null;
+        return Math.round(value * 100.0) / 100.0;
     }
 }

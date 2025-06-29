@@ -174,14 +174,33 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
                 .and("cpc").divide(100000.0).as("cpc")
                 .and("cpdc").divide(100000.0).as("cpdc")
                 .and("directGmv").divide(100000.0).as("directGmv")
-                .andInclude(
-                        "broadCir", "broadOrder", "broadOrderAmount",
-                        "broadRoi", "checkout", "checkoutRate", "click", "cr", "ctr", "directCr", "directCir",
-                        "directOrder", "directOrderAmount", "directRoi",
-                        "impression", "avgRank", "productClick", "productImpression",
-                        "productCtr", "locationInAds", "reach", "pageViews",
-                        "uniqueVisitors", "view", "cpm", "uniqueClickUser"
-                );
+                .and(ArithmeticOperators.Round.roundValueOf("broadCir").place(2)).as("broadCir")
+                .and(ArithmeticOperators.Round.roundValueOf("broadOrder").place(2)).as("broadOrder")
+                .and("broadOrderAmount").as("broadOrderAmount")
+                .and(ArithmeticOperators.Round.roundValueOf("broadRoi").place(2)).as("broadRoi")
+                .and(ArithmeticOperators.Round.roundValueOf("checkout").place(2)).as("checkout")
+                .and(ArithmeticOperators.Round.roundValueOf("checkoutRate").place(2)).as("checkoutRate")
+                .and("click").as("click")
+                .and(ArithmeticOperators.Round.roundValueOf("cr").place(2)).as("cr")
+                .and(ArithmeticOperators.Round.roundValueOf("ctr").place(2)).as("ctr")
+                .and(ArithmeticOperators.Round.roundValueOf("directCr").place(2)).as("directCr")
+                .and(ArithmeticOperators.Round.roundValueOf("directCir").place(2)).as("directCir")
+                .and(ArithmeticOperators.Round.roundValueOf("directOrder").place(2)).as("directOrder")
+                .and("directOrderAmount").as("directOrderAmount")
+                .and(ArithmeticOperators.Round.roundValueOf("directRoi").place(2)).as("directRoi")
+                .and("impression").as("impression")
+                .and(ArithmeticOperators.Round.roundValueOf("avgRank").place(2)).as("avgRank")
+                .and(ArithmeticOperators.Round.roundValueOf("productClick").place(2)).as("productClick")
+                .and(ArithmeticOperators.Round.roundValueOf("productImpression").place(2)).as("productImpression")
+                .and(ArithmeticOperators.Round.roundValueOf("productCtr").place(2)).as("productCtr")
+                .and("locationInAds").as("locationInAds")
+                .and(ArithmeticOperators.Round.roundValueOf("reach").place(2)).as("reach")
+                .and(ArithmeticOperators.Round.roundValueOf("pageViews").place(2)).as("pageViews")
+                .and(ArithmeticOperators.Round.roundValueOf("uniqueVisitors").place(2)).as("uniqueVisitors")
+                .and(ArithmeticOperators.Round.roundValueOf("view").place(2)).as("view")
+                .and(ArithmeticOperators.Round.roundValueOf("cpm").place(2)).as("cpm")
+                .and(ArithmeticOperators.Round.roundValueOf("uniqueClickUser").place(2)).as("uniqueClickUser");
+
         ops.add(project);
 
         AggregationResults<ProductKeywordResponseDto> results = mongoTemplate.aggregate(
@@ -196,39 +215,38 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     private void populateComparisonFields(ProductKeywordResponseDto current, ProductKeywordResponseDto previous) {
         if (previous == null) return;
 
-        current.setBroadCirComparison(calculateChange(current.getBroadCir(), previous.getBroadCir()));
-        current.setBroadGmvComparison(calculateChange(current.getBroadGmv(), previous.getBroadGmv()));
-        current.setBroadOrderComparison(calculateChange(current.getBroadOrder(), previous.getBroadOrder()));
-        current.setBroadOrderAmountComparison(calculateChange(current.getBroadOrderAmount(), previous.getBroadOrderAmount()));
-        current.setBroadRoiComparison(calculateChange(current.getBroadRoi(), previous.getBroadRoi()));
-        current.setCheckoutComparison(calculateChange(current.getCheckout(), previous.getCheckout()));
-        current.setCheckoutRateComparison(calculateChange(current.getCheckoutRate(), previous.getCheckoutRate()));
-        current.setClickComparison(calculateChange(current.getClick(), previous.getClick()));
-        current.setCostComparison(calculateChange(current.getCost(), previous.getCost()));
-        current.setCpcComparison(calculateChange(current.getCpc(), previous.getCpc()));
-        current.setCpdcComparison(calculateChange(current.getCpdc(), previous.getCpdc()));
-        current.setCrComparison(calculateChange(current.getCr(), previous.getCr()));
-        current.setCtrComparison(calculateChange(current.getCtr(), previous.getCtr()));
-        current.setDirectCrComparison(calculateChange(current.getDirectCr(), previous.getDirectCr()));
-        current.setDirectCirComparison(calculateChange(current.getDirectCir(), previous.getDirectCir()));
-        current.setDirectGmvComparison(calculateChange(current.getDirectGmv(), previous.getDirectGmv()));
-        current.setDirectOrderComparison(calculateChange(current.getDirectOrder(), previous.getDirectOrder()));
-        current.setDirectOrderAmountComparison(calculateChange(current.getDirectOrderAmount(), previous.getDirectOrderAmount()));
-        current.setDirectRoiComparison(calculateChange(current.getDirectRoi(), previous.getDirectRoi()));
-        current.setImpressionComparison(calculateChange(current.getImpression(), previous.getImpression()));
-        current.setAvgRankComparison(calculateChange(current.getAvgRank(), previous.getAvgRank()));
-        current.setProductClickComparison(calculateChange(current.getProductClick(), previous.getProductClick()));
-        current.setProductImpressionComparison(calculateChange(current.getProductImpression(), previous.getProductImpression()));
-        current.setProductCtrComparison(calculateChange(current.getProductCtr(), previous.getProductCtr()));
-        current.setLocationInAdsComparison(calculateChange(current.getLocationInAds(), previous.getLocationInAds()));
-        current.setReachComparison(calculateChange(current.getReach(), previous.getReach()));
-        current.setPageViewsComparison(calculateChange(current.getPageViews(), previous.getPageViews()));
-        current.setUniqueVisitorsComparison(calculateChange(current.getUniqueVisitors(), previous.getUniqueVisitors()));
-        current.setViewComparison(calculateChange(current.getView(), previous.getView()));
-        current.setCpmComparison(calculateChange(current.getCpm(), previous.getCpm()));
-        current.setUniqueClickUserComparison(calculateChange(current.getUniqueClickUser(), previous.getUniqueClickUser()));
+        current.setBroadCirComparison(roundDouble(calculateChange(current.getBroadCir(), previous.getBroadCir())));
+        current.setBroadGmvComparison(roundDouble(calculateChange(current.getBroadGmv(), previous.getBroadGmv())));
+        current.setBroadOrderComparison(roundDouble(calculateChange(current.getBroadOrder(), previous.getBroadOrder())));
+        current.setBroadOrderAmountComparison(roundDouble(calculateChange(current.getBroadOrderAmount(), previous.getBroadOrderAmount())));
+        current.setBroadRoiComparison(roundDouble(calculateChange(current.getBroadRoi(), previous.getBroadRoi())));
+        current.setCheckoutComparison(roundDouble(calculateChange(current.getCheckout(), previous.getCheckout())));
+        current.setCheckoutRateComparison(roundDouble(calculateChange(current.getCheckoutRate(), previous.getCheckoutRate())));
+        current.setClickComparison(roundDouble(calculateChange(current.getClick(), previous.getClick())));
+        current.setCostComparison(roundDouble(calculateChange(current.getCost(), previous.getCost())));
+        current.setCpcComparison(roundDouble(calculateChange(current.getCpc(), previous.getCpc())));
+        current.setCpdcComparison(roundDouble(calculateChange(current.getCpdc(), previous.getCpdc())));
+        current.setCrComparison(roundDouble(calculateChange(current.getCr(), previous.getCr())));
+        current.setCtrComparison(roundDouble(calculateChange(current.getCtr(), previous.getCtr())));
+        current.setDirectCrComparison(roundDouble(calculateChange(current.getDirectCr(), previous.getDirectCr())));
+        current.setDirectCirComparison(roundDouble(calculateChange(current.getDirectCir(), previous.getDirectCir())));
+        current.setDirectGmvComparison(roundDouble(calculateChange(current.getDirectGmv(), previous.getDirectGmv())));
+        current.setDirectOrderComparison(roundDouble(calculateChange(current.getDirectOrder(), previous.getDirectOrder())));
+        current.setDirectOrderAmountComparison(roundDouble(calculateChange(current.getDirectOrderAmount(), previous.getDirectOrderAmount())));
+        current.setDirectRoiComparison(roundDouble(calculateChange(current.getDirectRoi(), previous.getDirectRoi())));
+        current.setImpressionComparison(roundDouble(calculateChange(current.getImpression(), previous.getImpression())));
+        current.setAvgRankComparison(roundDouble(calculateChange(current.getAvgRank(), previous.getAvgRank())));
+        current.setProductClickComparison(roundDouble(calculateChange(current.getProductClick(), previous.getProductClick())));
+        current.setProductImpressionComparison(roundDouble(calculateChange(current.getProductImpression(), previous.getProductImpression())));
+        current.setProductCtrComparison(roundDouble(calculateChange(current.getProductCtr(), previous.getProductCtr())));
+        current.setLocationInAdsComparison(roundDouble(calculateChange(current.getLocationInAds(), previous.getLocationInAds())));
+        current.setReachComparison(roundDouble(calculateChange(current.getReach(), previous.getReach())));
+        current.setPageViewsComparison(roundDouble(calculateChange(current.getPageViews(), previous.getPageViews())));
+        current.setUniqueVisitorsComparison(roundDouble(calculateChange(current.getUniqueVisitors(), previous.getUniqueVisitors())));
+        current.setViewComparison(roundDouble(calculateChange(current.getView(), previous.getView())));
+        current.setCpmComparison(roundDouble(calculateChange(current.getCpm(), previous.getCpm())));
+        current.setUniqueClickUserComparison(roundDouble(calculateChange(current.getUniqueClickUser(), previous.getUniqueClickUser())));
     }
-
     private Double calculateChange(Double current, Double previous) {
         if (current == null || previous == null || previous == 0) {
             return null;
@@ -268,5 +286,10 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
         Object v = doc.get(key);
         if (v instanceof Number) return ((Number) v).intValue();
         return null;
+    }
+
+    private Double roundDouble(Double value) {
+        if (value == null) return null;
+        return Math.round(value * 100.0) / 100.0;
     }
 }
