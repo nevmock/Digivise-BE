@@ -519,7 +519,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
 
         // Ini buat debugging
-        adsOps.add(match(Criteria.where("data.entry_list.report.cpc").gt(0)));
+        //adsOps.add(match(Criteria.where("data.entry_list.report.cpc").gt(0)));
 
 
         adsOps.add(sort(Sort.by(Sort.Direction.DESC, "from")));
