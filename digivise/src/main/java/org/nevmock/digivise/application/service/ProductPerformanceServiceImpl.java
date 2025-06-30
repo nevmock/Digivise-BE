@@ -41,28 +41,23 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
     ) {
 
         Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
-        // Dapatkan pendapatan per produk untuk periode1
         Map<Long, Long> productRevenueMap = getProductRevenueForPeriod(shopId, from1, to1);
 
-        // Ambil data periode1 tanpa filter salesClassification
         List<ProductPerformanceResponseDto> period1DataList = getAggregatedDataByProductForRange(
                 shopId, name, status, null, from1, to1
         );
 
-        // Set salesClassification untuk setiap produk
         period1DataList.forEach(dto -> {
             Long revenue = productRevenueMap.get(dto.getProductId());
             dto.setSalesClassification(determineSalesClassification(revenue, totalRevenue));
         });
 
-        // Filter berdasarkan salesClassification jika ada
         if (salesClassification != null && !salesClassification.trim().isEmpty()) {
             period1DataList = period1DataList.stream()
                     .filter(dto -> salesClassification.equalsIgnoreCase(dto.getSalesClassification()))
                     .collect(Collectors.toList());
         }
 
-        // Ambil data periode2
         Map<Long, ProductPerformanceResponseDto> period2DataMap = getAggregatedDataByProductForRange(
                 shopId, name, status, null, from2, to2
         ).stream()

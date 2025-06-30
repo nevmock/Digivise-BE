@@ -198,7 +198,10 @@ public class MerchantServiceImpl implements MerchantService {
     }
 
     @Override
-    public Boolean loginMerchant(String email, String password) {
+    public Boolean loginMerchant(String email, String password, UUID merchantId) {
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found with ID: " + merchantId));
+
         HttpClient httpClient = HttpClient.newHttpClient();
 
         String jsonBody = String.format(
@@ -206,6 +209,21 @@ public class MerchantServiceImpl implements MerchantService {
                 email,
                 password
         );
+
+        if (merchant.getUsername() != null && merchant.getPassword() != null) {
+            String decrypted = null;
+            try {
+                decrypted = PasswordEncryptor.INSTANCE.decrypt(merchant.getPassword());
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to decrypt merchant password", e);
+            }
+
+            if (merchant.getUsername().equals(email) && decrypted.equals(password)) {
+
+            } else {
+                throw new RuntimeException("Invalid credentials for merchant: " + merchantId);
+            }
+        }
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create("http://103.150.116.30:1337/api/v1/shopee-seller/login"))
@@ -289,6 +307,7 @@ public class MerchantServiceImpl implements MerchantService {
                 merchantToUpdate.setMerchantShopeeId(newShopeeId);
             }
 
+            merchantToUpdate.setUsername(username);
             merchantToUpdate.setMerchantName(result.getData().getData().getName());
             merchantToUpdate.setPassword(password); // Pastikan variable `password` terisi valid
             merchantToUpdate.setLastLogin(Timestamp.from(Instant.now()));

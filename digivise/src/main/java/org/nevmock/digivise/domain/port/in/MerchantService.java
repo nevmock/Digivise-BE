@@ -23,7 +23,7 @@ public interface MerchantService {
 
     void deleteMerchantByUserId(UUID userId);
 
-    Boolean loginMerchant(String username, String password);
+    Boolean loginMerchant(String username, String password, UUID merchantId);
 
     MerchantInfoResponseDto otpLoginMerchant(String username, UUID merchantId, String otpCode);
 

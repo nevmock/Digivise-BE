@@ -32,7 +32,7 @@ public class KPIServiceImpl implements KPIService {
     @Override
     public KPIResponseDto getKPIById(UUID kpiId) {
         Optional<KPIResponseDto> kpiData = kpiRepository.findKPIById(kpiId)
-                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier()));
+                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier(), kpi.getRoasKpi()));
 
         if (kpiData.isEmpty()) {
             throw new NotFoundException("KPI not found with ID: " + kpiId);
@@ -44,7 +44,7 @@ public class KPIServiceImpl implements KPIService {
     @Override
     public KPIResponseDto getKPIByMerchantId(UUID merchantId) {
         Optional<KPIResponseDto> kpiData = kpiRepository.findByMerchantId(merchantId)
-                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier()));
+                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier(), kpi.getRoasKpi()));
 
         if (kpiData.isEmpty()) {
             throw new NotFoundException("KPI not found with Merchant ID: " + merchantId);
@@ -76,6 +76,7 @@ public class KPIServiceImpl implements KPIService {
         newKPI.setMinBidSearch(kpi.getMinBidSearch());
         newKPI.setMinBidReco(kpi.getMinBidReco());
         newKPI.setMultiplier(kpi.getMultiplier());
+        newKPI.setRoasKpi(kpi.getRoasKpi());
 
         kpiRepository.save(newKPI);
 
@@ -93,7 +94,8 @@ public class KPIServiceImpl implements KPIService {
                 newKPI.getMinKlik(),
                 newKPI.getMinBidSearch(),
                 newKPI.getMinBidReco(),
-                newKPI.getMultiplier()
+                newKPI.getMultiplier(),
+                newKPI.getRoasKpi()
         );
     }
 
@@ -124,6 +126,7 @@ public class KPIServiceImpl implements KPIService {
         updatedKPI.setMinBidSearch(kpi.getMinBidSearch());
         updatedKPI.setMinBidReco(kpi.getMinBidReco());
         updatedKPI.setMultiplier(kpi.getMultiplier());
+        updatedKPI.setRoasKpi(kpi.getRoasKpi());
         updatedKPI.setMerchant(merchantRepository.findById(kpi.getMerchantId())
                 .orElseThrow(() -> new NotFoundException("Merchant not found with ID: " + kpi.getMerchantId())));
 
@@ -142,7 +145,8 @@ public class KPIServiceImpl implements KPIService {
                 updatedKPI.getMinKlik(),
                 updatedKPI.getMinBidSearch(),
                 updatedKPI.getMinBidReco(),
-                updatedKPI.getMultiplier()
+                updatedKPI.getMultiplier(),
+                updatedKPI.getRoasKpi()
         );
     }
 
@@ -160,14 +164,14 @@ public class KPIServiceImpl implements KPIService {
     @Override
     public List<KPIResponseDto> getAllKPIs() {
         return kpiRepository.findAll().stream()
-                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier()))
+                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier(), kpi.getRoasKpi()))
                 .toList();
     }
 
     @Override
     public List<KPIResponseDto> getKPIsByUserId(UUID userId) {
         return kpiRepository.findByUserId(userId).stream()
-                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier()))
+                .map(kpi -> new KPIResponseDto(kpi.getId(), kpi.getMerchant().getId(), kpi.getUser().getId(), kpi.getMaxCpc(), kpi.getMaxAcos(), kpi.getCpcScaleFactor(), kpi.getAcosScaleFactor(), kpi.getMaxAdjustment(), kpi.getMinAdjustment(), kpi.getMaxKlik(), kpi.getMinKlik(), kpi.getMinBidSearch(), kpi.getMinBidReco(), kpi.getMultiplier(), kpi.getRoasKpi()))
                 .toList();
     }
 }

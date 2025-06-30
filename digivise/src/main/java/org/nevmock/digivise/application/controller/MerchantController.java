@@ -64,7 +64,7 @@ public class MerchantController {
             @RequestBody
             MerchantLoginDto merchantLoginDto
     ) {
-        Boolean merchant = merchantService.loginMerchant(merchantLoginDto.getUsername(), merchantLoginDto.getPassword());
+        Boolean merchant = merchantService.loginMerchant(merchantLoginDto.getUsername(), merchantLoginDto.getPassword(), UUID.fromString(merchantLoginDto.getMerchantId()));
         return ResponseEntity.ok(merchant);
     }
 

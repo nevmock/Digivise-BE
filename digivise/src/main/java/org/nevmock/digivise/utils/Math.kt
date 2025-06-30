@@ -148,6 +148,6 @@ fun calculateRoas(
 ): Double {
     val revenue = roasReal * currentBudget
     val targetBudget = revenue / roasKpi
-
-    return targetBudget
+    val budgetRatio = targetBudget / currentBudget
+    return budgetRatio
 }

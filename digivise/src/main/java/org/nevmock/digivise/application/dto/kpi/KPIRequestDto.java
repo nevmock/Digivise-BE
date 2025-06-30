@@ -24,4 +24,5 @@ public class KPIRequestDto {
     private Double minBidSearch;
     private Double minBidReco;
     private Double multiplier;
+    private Double roasKpi;
 }

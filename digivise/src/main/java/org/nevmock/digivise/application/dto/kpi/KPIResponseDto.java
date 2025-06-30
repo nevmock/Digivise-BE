@@ -25,4 +25,5 @@ public class KPIResponseDto {
     private Double minBidSearch;
     private Double minBidReco;
     private Double multiplier;
+    private Double roasKpi;
 }

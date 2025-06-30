@@ -12,4 +12,5 @@ import lombok.Setter;
 public class MerchantLoginDto {
     private String username;
     private String password;
+    private String merchantId;
 }
