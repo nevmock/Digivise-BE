@@ -111,4 +111,6 @@ public class ProductPerformanceResponseDto {
     private Double placedBuyersToConfirmedBuyersRateComparison;
     private Double ConfirmedSellRatioComparison;
     private Double uvToPaidBuyersRateComparison;
+
+    private String salesClassification;
 }

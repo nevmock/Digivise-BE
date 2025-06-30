@@ -9,21 +9,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Service
 public class ProductPerformanceServiceImpl implements ProductPerformanceService {
@@ -44,13 +40,31 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             Pageable pageable
     ) {
 
+        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
+        // Dapatkan pendapatan per produk untuk periode1
+        Map<Long, Long> productRevenueMap = getProductRevenueForPeriod(shopId, from1, to1);
+
+        // Ambil data periode1 tanpa filter salesClassification
         List<ProductPerformanceResponseDto> period1DataList = getAggregatedDataByProductForRange(
-                shopId, name, status, salesClassification, from1, to1
+                shopId, name, status, null, from1, to1
         );
 
+        // Set salesClassification untuk setiap produk
+        period1DataList.forEach(dto -> {
+            Long revenue = productRevenueMap.get(dto.getProductId());
+            dto.setSalesClassification(determineSalesClassification(revenue, totalRevenue));
+        });
 
+        // Filter berdasarkan salesClassification jika ada
+        if (salesClassification != null && !salesClassification.trim().isEmpty()) {
+            period1DataList = period1DataList.stream()
+                    .filter(dto -> salesClassification.equalsIgnoreCase(dto.getSalesClassification()))
+                    .collect(Collectors.toList());
+        }
+
+        // Ambil data periode2
         Map<Long, ProductPerformanceResponseDto> period2DataMap = getAggregatedDataByProductForRange(
-                shopId, name, status, salesClassification, from2, to2
+                shopId, name, status, null, from2, to2
         ).stream()
                 .collect(Collectors.toMap(ProductPerformanceResponseDto::getProductId, Function.identity()));
 
@@ -58,10 +72,8 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-
         List<ProductPerformanceWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
             ProductPerformanceResponseDto period2Data = period2DataMap.get(period1Data.getProductId());
-
 
             populateComparisonFields(period1Data, period2Data);
 
@@ -75,7 +87,6 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                     .data(Collections.singletonList(period1Data))
                     .build();
         }).collect(Collectors.toList());
-
 
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), resultList.size());
@@ -97,36 +108,36 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             Pageable pageable
     ) {
 
+        // If salesClassification filter is provided, we need to apply it after getting the data
+        // because it requires calculating revenue percentages
+        boolean applySalesClassificationFilter = salesClassification != null && !salesClassification.trim().isEmpty();
+
         List<AggregationOperation> ops = new ArrayList<>();
 
         long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
         long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
 
-        ops.add(Aggregation.match(
+        ops.add(match(
                 Criteria.where("shop_id").is(shopId)
                         .and("from").gte(fromTimestamp).lte(toTimestamp)
         ));
 
-        ops.add(Aggregation.unwind("data"));
+        ops.add(unwind("data"));
 
-        
         if (search != null && !search.trim().isEmpty()) {
             Criteria searchFilter = Criteria.where("data.name")
                     .regex(".*" + search.trim() + ".*", "i");
-            ops.add(Aggregation.match(searchFilter));
+            ops.add(match(searchFilter));
         }
 
-        
         if (status != null) {
-            ops.add(Aggregation.match(Criteria.where("data.status").is(status)));
+            ops.add(match(Criteria.where("data.status").is(status)));
         }
 
-        
-        if (salesClassification != null && !salesClassification.trim().isEmpty()) {
-            ops.add(Aggregation.match(getSalesClassificationCriteria(salesClassification)));
-        }
+        // Don't apply salesClassification filter in aggregation pipeline
+        // We'll apply it after getting the results
 
-        ops.add(Aggregation.project()
+        ops.add(project()
                 .and("data.id").as("productId")
                 .and("_id").as("id")
                 .and("uuid").as("uuid")
@@ -157,12 +168,13 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .and("data.uv_to_confirmed_buyers_rate").as("uvToConfirmedBuyersRate")
                 .and("data.placed_buyers_to_confirmed_buyers_rate").as("placedBuyersToConfirmedBuyersRate")
                 .and("data.placed_to_paid_buyers_rate").as("confirmedSellRatio")
-
         );
 
-
-        ops.add(Aggregation.skip(pageable.getOffset()));
-        ops.add(Aggregation.limit(pageable.getPageSize()));
+        // Don't apply pagination in aggregation if we need to filter by sales classification
+        if (!applySalesClassificationFilter) {
+            ops.add(Aggregation.skip(pageable.getOffset()));
+            ops.add(Aggregation.limit(pageable.getPageSize()));
+        }
 
         AggregationResults<Document> results = mongoTemplate.aggregate(
                 Aggregation.newAggregation(ops),
@@ -173,6 +185,26 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         List<ProductPerformanceResponseDto> dtos = results.getMappedResults().stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
+
+        // Apply sales classification filter if needed
+        if (applySalesClassificationFilter) {
+            // Get revenue data for the period
+            Long totalRevenue = getTotalRevenueForPeriod(shopId, from, to);
+            Map<Long, Long> productRevenueMap = getProductRevenueForPeriod(shopId, from, to);
+
+            // Set sales classification for each product and filter
+            dtos = dtos.stream()
+                    .filter(dto -> {
+                        if (dto.getProductId() != null) {
+                            Long revenue = productRevenueMap.get(dto.getProductId());
+                            String classification = determineSalesClassification(revenue, totalRevenue);
+                            dto.setSalesClassification(classification);
+                            return salesClassification.equalsIgnoreCase(classification);
+                        }
+                        return false;
+                    })
+                    .collect(Collectors.toList());
+        }
 
         Map<Long, List<ProductPerformanceResponseDto>> grouped = dtos.stream()
                 .filter(d -> d.getProductId() != null)
@@ -190,8 +222,211 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                         .build())
                 .collect(Collectors.toList());
 
+        if (applySalesClassificationFilter) {
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), wrappers.size());
+
+            if (start > wrappers.size()) {
+                return new PageImpl<>(Collections.emptyList(), pageable, wrappers.size());
+            }
+
+            return new PageImpl<>(wrappers.subList(start, end), pageable, wrappers.size());
+        }
+
         return new PageImpl<>(wrappers, pageable, wrappers.size());
     }
+
+//@Service
+//public class ProductPerformanceServiceImpl implements ProductPerformanceService {
+//
+//    @Autowired
+//    private MongoTemplate mongoTemplate;
+//
+//    @Override
+//    public Page<ProductPerformanceWrapperDto> findByRange(
+//            String shopId,
+//            LocalDateTime from1,
+//            LocalDateTime to1,
+//            LocalDateTime from2,
+//            LocalDateTime to2,
+//            String name,
+//            Integer status,
+//            String salesClassification,
+//            Pageable pageable
+//    ) {
+//
+//        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
+//        // Dapatkan pendapatan per produk untuk periode1
+//        Map<Long, Long> productRevenueMap = getProductRevenueForPeriod(shopId, from1, to1);
+//
+//        // Ambil data periode1 tanpa filter salesClassification
+//        List<ProductPerformanceResponseDto> period1DataList = getAggregatedDataByProductForRange(
+//                shopId, name, status, null, from1, to1
+//        );
+//
+//        // Set salesClassification untuk setiap produk
+//        period1DataList.forEach(dto -> {
+//            Long revenue = productRevenueMap.get(dto.getProductId());
+//            dto.setSalesClassification(determineSalesClassification(revenue, totalRevenue));
+//        });
+//
+//        // Filter berdasarkan salesClassification jika ada
+//        if (salesClassification != null && !salesClassification.trim().isEmpty()) {
+//            period1DataList = period1DataList.stream()
+//                    .filter(dto -> salesClassification.equalsIgnoreCase(dto.getSalesClassification()))
+//                    .collect(Collectors.toList());
+//        }
+//
+//        // Ambil data periode2
+//        Map<Long, ProductPerformanceResponseDto> period2DataMap = getAggregatedDataByProductForRange(
+//                shopId, name, status, null, from2, to2
+//        ).stream()
+//                .collect(Collectors.toMap(ProductPerformanceResponseDto::getProductId, Function.identity()));
+//
+//
+//
+////        Map<Long, ProductPerformanceResponseDto> period2DataMap = getAggregatedDataByProductForRange(
+////                shopId, name, status, salesClassification, from2, to2
+////        ).stream()
+////                .collect(Collectors.toMap(ProductPerformanceResponseDto::getProductId, Function.identity()));
+//
+//        if (period1DataList.isEmpty()) {
+//            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+//        }
+//
+//
+//        List<ProductPerformanceWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
+//            ProductPerformanceResponseDto period2Data = period2DataMap.get(period1Data.getProductId());
+//
+//
+//            populateComparisonFields(period1Data, period2Data);
+//
+//            return ProductPerformanceWrapperDto.builder()
+//                    .productId(period1Data.getProductId())
+//                    .shopId(shopId)
+//                    .from1(from1)
+//                    .to1(to1)
+//                    .from2(from2)
+//                    .to2(to2)
+//                    .data(Collections.singletonList(period1Data))
+//                    .build();
+//        }).collect(Collectors.toList());
+//
+//
+//        int start = (int) pageable.getOffset();
+//        int end = Math.min((start + pageable.getPageSize()), resultList.size());
+//
+//        if (start > resultList.size()) {
+//            return new PageImpl<>(Collections.emptyList(), pageable, resultList.size());
+//        }
+//
+//        return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
+//    }
+//
+//    public Page<ProductPerformanceWrapperDto> findByRange2(
+//            String shopId,
+//            LocalDateTime from,
+//            LocalDateTime to,
+//            String search,
+//            Integer status,
+//            String salesClassification,
+//            Pageable pageable
+//    ) {
+//
+//        List<AggregationOperation> ops = new ArrayList<>();
+//
+//        long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
+//        long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
+//
+//        ops.add(match(
+//                Criteria.where("shop_id").is(shopId)
+//                        .and("from").gte(fromTimestamp).lte(toTimestamp)
+//        ));
+//
+//        ops.add(unwind("data"));
+//
+//
+//        if (search != null && !search.trim().isEmpty()) {
+//            Criteria searchFilter = Criteria.where("data.name")
+//                    .regex(".*" + search.trim() + ".*", "i");
+//            ops.add(match(searchFilter));
+//        }
+//
+//
+//        if (status != null) {
+//            ops.add(match(Criteria.where("data.status").is(status)));
+//        }
+//
+//
+//        if (salesClassification != null && !salesClassification.trim().isEmpty()) {
+//            ops.add(match(getSalesClassificationCriteria(salesClassification)));
+//        }
+//
+//        ops.add(project()
+//                .and("data.id").as("productId")
+//                .and("_id").as("id")
+//                .and("uuid").as("uuid")
+//                .and("shop_id").as("shopId")
+//                .and("createdAt").as("createdAt")
+//                .and("data.name").as("name")
+//                .and("data.image").as("image")
+//                .and("data.status").as("status")
+//                .and("data.uv").as("uv")
+//                .and("data.pv").as("pv")
+//                .and("data.likes").as("likes")
+//                .and("data.bounce_visitors").as("bounceVisitors")
+//                .and("data.bounce_rate").as("bounceRate")
+//                .and("data.search_clicks").as("searchClicks")
+//                .and("data.add_to_cart_units").as("addToCartUnits")
+//                .and("data.add_to_cart_buyers").as("addToCartBuyers")
+//                .and("data.placed_sales").as("placedSales")
+//                .and("data.placed_units").as("placedUnits")
+//                .and("data.placed_buyers").as("placedBuyers")
+//                .and("data.paid_sales").as("paidSales")
+//                .and("data.paid_units").as("paidUnits")
+//                .and("data.paid_buyers").as("paidBuyers")
+//                .and("data.confirmed_sales").as("confirmedSales")
+//                .and("data.confirmed_units").as("confirmedUnits")
+//                .and("data.confirmed_buyers").as("confirmedBuyers")
+//                .and("data.uv_to_add_to_cart_rate").as("uvToAddToCartRate")
+//                .and("data.uv_to_placed_buyers_rate").as("uvToPlacedBuyersRate")
+//                .and("data.uv_to_confirmed_buyers_rate").as("uvToConfirmedBuyersRate")
+//                .and("data.placed_buyers_to_confirmed_buyers_rate").as("placedBuyersToConfirmedBuyersRate")
+//                .and("data.placed_to_paid_buyers_rate").as("confirmedSellRatio")
+//        );
+//
+//
+//        ops.add(Aggregation.skip(pageable.getOffset()));
+//        ops.add(Aggregation.limit(pageable.getPageSize()));
+//
+//        AggregationResults<Document> results = mongoTemplate.aggregate(
+//                Aggregation.newAggregation(ops),
+//                "ProductPerformance",
+//                Document.class
+//        );
+//
+//        List<ProductPerformanceResponseDto> dtos = results.getMappedResults().stream()
+//                .map(this::mapToDto)
+//                .collect(Collectors.toList());
+//
+//        Map<Long, List<ProductPerformanceResponseDto>> grouped = dtos.stream()
+//                .filter(d -> d.getProductId() != null)
+//                .collect(Collectors.groupingBy(ProductPerformanceResponseDto::getProductId));
+//
+//        List<ProductPerformanceWrapperDto> wrappers = grouped.entrySet().stream()
+//                .map(e -> ProductPerformanceWrapperDto.builder()
+//                        .productId(e.getKey())
+//                        .shopId(shopId)
+//                        .from1(from)
+//                        .to1(to)
+//                        .from2(null)
+//                        .to2(null)
+//                        .data(e.getValue())
+//                        .build())
+//                .collect(Collectors.toList());
+//
+//        return new PageImpl<>(wrappers, pageable, wrappers.size());
+//    }
 
     private void populateComparisonFields(ProductPerformanceResponseDto currentData, ProductPerformanceResponseDto previousData) {
         currentData.setUvComparison(
@@ -353,25 +588,25 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         long fromTimestamp = from.atZone(ZoneId.systemDefault()).toEpochSecond();
         long toTimestamp = to.atZone(ZoneId.systemDefault()).toEpochSecond();
 
-        ops.add(Aggregation.match(
+        ops.add(match(
                 Criteria.where("shop_id").is(shopId)
                         .and("from").gte(fromTimestamp).lte(toTimestamp)
         ));
-        ops.add(Aggregation.unwind("data"));
+        ops.add(unwind("data"));
 
-        
+
         if (search != null && !search.trim().isEmpty()) {
-            ops.add(Aggregation.match(Criteria.where("data.name").regex(".*" + search.trim() + ".*", "i")));
+            ops.add(match(Criteria.where("data.name").regex(".*" + search.trim() + ".*", "i")));
         }
 
-        
+
         if (status != null) {
-            ops.add(Aggregation.match(Criteria.where("data.status").is(status)));
+            ops.add(match(Criteria.where("data.status").is(status)));
         }
 
-        
+
         if (salesClassification != null && !salesClassification.trim().isEmpty()) {
-            ops.add(Aggregation.match(getSalesClassificationCriteria(salesClassification)));
+            ops.add(match(getSalesClassificationCriteria(salesClassification)));
         }
 
 
@@ -405,7 +640,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
         );
 
 
-        ops.add(Aggregation.project()
+        ops.add(project()
                 .and("_id").as("productId")
                 .and("avgUv").as("uv")
                 .and("avgPv").as("pv")
@@ -621,5 +856,81 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
     private Double roundDouble(Double value) {
         if (value == null) return null;
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    private Long getTotalRevenueForPeriod(String shopId, LocalDateTime from, LocalDateTime to) {
+        List<AggregationOperation> ops = new ArrayList<>();
+        ops.add(match(Criteria.where("shop_id").is(shopId)
+                .and("createdAt").gte(from).lte(to)));
+        ops.add(unwind("data"));
+
+        ops.add(project()
+                .and(ConvertOperators.valueOf(
+                        ConditionalOperators.ifNull("data.statistics.sold_count").then("0")
+                ).convertToInt()).as("soldCount")
+                .and(ConvertOperators.valueOf(
+                        ConditionalOperators.ifNull("data.price_detail.selling_price_max").then(0)
+                ).convertToDouble()).as("sellingPrice")
+        );
+
+        ops.add(project()
+                .and(ArithmeticOperators.Multiply.valueOf("sellingPrice").multiplyBy("soldCount")).as("revenue")
+        );
+
+        ops.add(group().sum("revenue").as("totalRevenue"));
+
+        AggregationResults<Document> results = mongoTemplate.aggregate(newAggregation(ops), "ProductStock", Document.class);
+        Document doc = results.getUniqueMappedResult();
+
+        return (doc != null && doc.getDouble("totalRevenue") != null) ? doc.getDouble("totalRevenue").longValue() : 0L;
+    }
+
+    private Map<Long, Long> getProductRevenueForPeriod(String shopId, LocalDateTime from, LocalDateTime to) {
+        List<AggregationOperation> ops = new ArrayList<>();
+        ops.add(match(Criteria.where("shop_id").is(shopId)
+                .and("createdAt").gte(from).lte(to)));
+        ops.add(unwind("data"));
+
+        ops.add(project()
+                .and("data.id").as("productId")
+                .and(ConvertOperators.valueOf(
+                        ConditionalOperators.ifNull("data.statistics.sold_count").then("0")
+                ).convertToInt()).as("soldCount")
+                .and(ConvertOperators.valueOf(
+                        ConditionalOperators.ifNull("data.price_detail.selling_price_max").then(0)
+                ).convertToDouble()).as("sellingPrice")
+        );
+
+        ops.add(project()
+                .and("productId").as("productId")
+                .and(ArithmeticOperators.Multiply.valueOf("sellingPrice").multiplyBy("soldCount")).as("revenue")
+        );
+
+        ops.add(group("productId").sum("revenue").as("totalRevenue"));
+
+        AggregationResults<Document> results = mongoTemplate.aggregate(newAggregation(ops), "ProductStock", Document.class);
+        Map<Long, Long> revenueMap = new HashMap<>();
+        for (Document doc : results) {
+            Long productId = getNumberLong(doc, "_id");
+            Double revenue = doc.getDouble("totalRevenue");
+            if (productId != null && revenue != null) {
+                revenueMap.put(productId, revenue.longValue());
+            }
+        }
+        return revenueMap;
+    }
+
+    private String determineSalesClassification(Long productRevenue, Long totalRevenue) {
+        if (productRevenue == null || totalRevenue == null || totalRevenue == 0) {
+            return "No Data";
+        }
+        double percentage = (double) productRevenue / totalRevenue;
+        if (percentage >= 0.20) {
+            return "Best Seller";
+        } else if (percentage >= 0.10) {
+            return "Middle Moving";
+        } else {
+            return "Slow Moving";
+        }
     }
 }

@@ -28,11 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,7 +45,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
     @Autowired
     private KPIRepository kpiRepository;
-
     @Override
     public Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
             String shopId,
@@ -62,7 +57,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             String type,
             String state,
             String productPlacement,
-            String salesClassification,
+            String salesClassification, // Filter parameter
             String title,
             Long campaignId
     ) {
@@ -76,8 +71,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         Map<Long, Double> customRoasMap1 = getCustomRoasForPeriod(shopId, from1, to1);
         Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
 
-
-        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1); 
+        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
         Map<Long, Map<Long, Long>> campaignProductRevenueMap = getCampaignProductRevenueForPeriod(shopId, from1, to1);
 
         List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(
@@ -92,47 +86,44 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
-            ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
+        List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream()
+                .map(period1Data -> {
+                    ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
 
-            processCustomRoas(period1Data, customRoasMap1.get(period1Data.getCampaignId()), kpi);
-            if (period2Data != null) {
-                processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
-            }
+                    processCustomRoas(period1Data, customRoasMap1.get(period1Data.getCampaignId()), kpi);
+                    if (period2Data != null) {
+                        processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
+                    }
 
-            
+                    Long cId = period1Data.getCampaignId();
+                    Map<Long, Long> productRevenues = campaignProductRevenueMap.get(cId);
+                    String calculatedSalesClassification = determineSalesClassification(productRevenues, totalRevenue);
+                    period1Data.setSalesClassification(calculatedSalesClassification);
 
-            Long cId = period1Data.getCampaignId();
-            Map<Long, Long> productRevenues = campaignProductRevenueMap.get(cId);
-            period1Data.setSalesClassification(determineSalesClassification(productRevenues, totalRevenue));
+                    populateComparisonFields(period1Data, period2Data);
 
-            populateComparisonFields(period1Data, period2Data);
+                    return ProductAdsResponseWrapperDto.builder()
+                            .campaignId(period1Data.getCampaignId())
+                            .from1(from1)
+                            .to1(to1)
+                            .from2(from2)
+                            .to2(to2)
+                            .data(Collections.singletonList(period1Data))
+                            .build();
+                })
+                .filter(wrapper -> {
+                    if (salesClassification == null || salesClassification.isBlank()) {
+                        return true; // Tidak ada filter, tampilkan semua
+                    }
 
-            if (!period1Data.getHasCustomRoas()) {
-                period1Data.setInsight(
-                        MathKt.renderInsight(
-                                MathKt.formulateRecommendation(
-                                        period1Data.getCpc(),
-                                        period1Data.getAcos(),
-                                        period1Data.getClick(),
-                                        kpi,
-                                        null,
-                                        null
-                                )
-                        )
-                );
-            }
+                    String actualSalesClassification = wrapper.getData().get(0).getSalesClassification();
 
-            return ProductAdsResponseWrapperDto.builder()
-                    .campaignId(period1Data.getCampaignId())
-                    .from1(from1)
-                    .to1(to1)
-                    .from2(from2)
-                    .to2(to2)
-                    .data(Collections.singletonList(period1Data))
-                    .build();
-        }).collect(Collectors.toList());
+                    // Case-insensitive comparison
+                    return salesClassification.equalsIgnoreCase(actualSalesClassification);
+                })
+                .collect(Collectors.toList());
 
+        // Pagination setelah filtering
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), resultList.size());
         if (start > resultList.size()) {
@@ -140,6 +131,222 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
         return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
     }
+
+    // ALTERNATIVE APPROACH: Separate filter method untuk reusability
+    private List<ProductAdsResponseWrapperDto> applySalesClassificationFilter(
+            List<ProductAdsResponseWrapperDto> dataList,
+            String salesClassification) {
+
+        if (salesClassification == null || salesClassification.isBlank()) {
+            return dataList;
+        }
+
+        return dataList.stream()
+                .filter(wrapper -> {
+                    String actualSalesClassification = wrapper.getData().get(0).getSalesClassification();
+                    return salesClassification.equalsIgnoreCase(actualSalesClassification);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ALTERNATIVE APPROACH: Multiple filter support
+    private List<ProductAdsResponseWrapperDto> applyMultipleSalesClassificationFilter(
+            List<ProductAdsResponseWrapperDto> dataList,
+            List<String> salesClassifications) {
+
+        if (salesClassifications == null || salesClassifications.isEmpty()) {
+            return dataList;
+        }
+
+        Set<String> filterSet = salesClassifications.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+
+        return dataList.stream()
+                .filter(wrapper -> {
+                    String actualSalesClassification = wrapper.getData().get(0).getSalesClassification();
+                    return filterSet.contains(actualSalesClassification.toLowerCase());
+                })
+                .collect(Collectors.toList());
+    }
+
+    // OPTIMIZED APPROACH: Early filtering dengan pre-calculation
+    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotalOptimized(
+            String shopId,
+            String biddingStrategy,
+            LocalDateTime from1,
+            LocalDateTime to1,
+            LocalDateTime from2,
+            LocalDateTime to2,
+            Pageable pageable,
+            String type,
+            String state,
+            String productPlacement,
+            String salesClassification,
+            String title,
+            Long campaignId
+    ) {
+        // Get required data
+        Merchant merchant = merchantRepository
+                .findByShopeeMerchantId(shopId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
+        KPI kpi = kpiRepository
+                .findByMerchantId(merchant.getId())
+                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
+
+        // Pre-calculate revenue data for classification
+        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
+        Map<Long, Map<Long, Long>> campaignProductRevenueMap = getCampaignProductRevenueForPeriod(shopId, from1, to1);
+
+        // Pre-calculate sales classification for all campaigns
+        Map<Long, String> salesClassificationMap = new HashMap<>();
+        for (Map.Entry<Long, Map<Long, Long>> entry : campaignProductRevenueMap.entrySet()) {
+            Long campaignId2 = entry.getKey();
+            Map<Long, Long> productRevenues = entry.getValue();
+            String classification = determineSalesClassification(productRevenues, totalRevenue);
+            salesClassificationMap.put(campaignId2, classification);
+        }
+
+        // Get data for both periods
+        List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(
+                shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, campaignId, kpi);
+
+        // Early filter berdasarkan sales classification jika diperlukan
+        if (salesClassification != null && !salesClassification.isBlank()) {
+            period1DataList = period1DataList.stream()
+                    .filter(data -> {
+                        String actualClassification = salesClassificationMap.get(data.getCampaignId());
+                        return salesClassification.equalsIgnoreCase(actualClassification);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        if (period1DataList.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        // Get period 2 data hanya untuk campaign yang sudah difilter
+        Set<Long> filteredCampaignIds = period1DataList.stream()
+                .map(ProductAdsResponseDto::getCampaignId)
+                .collect(Collectors.toSet());
+
+        Map<Long, ProductAdsResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(
+                shopId, biddingStrategy, type, state, productPlacement, title, from2, to2, campaignId, kpi)
+                .stream()
+                .filter(data -> filteredCampaignIds.contains(data.getCampaignId()))
+                .collect(Collectors.toMap(ProductAdsResponseDto::getCampaignId, Function.identity()));
+
+        // Process remaining data
+        Map<Long, Double> customRoasMap1 = getCustomRoasForPeriod(shopId, from1, to1);
+        Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
+
+        List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream()
+                .map(period1Data -> {
+                    ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
+
+                    processCustomRoas(period1Data, customRoasMap1.get(period1Data.getCampaignId()), kpi);
+                    if (period2Data != null) {
+                        processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
+                    }
+
+                    // Set sales classification dari pre-calculated map
+                    String calculatedSalesClassification = salesClassificationMap.get(period1Data.getCampaignId());
+                    period1Data.setSalesClassification(calculatedSalesClassification);
+
+                    populateComparisonFields(period1Data, period2Data);
+
+                    return ProductAdsResponseWrapperDto.builder()
+                            .campaignId(period1Data.getCampaignId())
+                            .from1(from1)
+                            .to1(to1)
+                            .from2(from2)
+                            .to2(to2)
+                            .data(Collections.singletonList(period1Data))
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        // Pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), resultList.size());
+        if (start > resultList.size()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, resultList.size());
+        }
+        return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
+    }
+//    @Override
+//    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
+//            String shopId,
+//            String biddingStrategy,
+//            LocalDateTime from1,
+//            LocalDateTime to1,
+//            LocalDateTime from2,
+//            LocalDateTime to2,
+//            Pageable pageable,
+//            String type,
+//            String state,
+//            String productPlacement,
+//            String salesClassification,
+//            String title,
+//            Long campaignId
+//    ) {
+//        Merchant merchant = merchantRepository
+//                .findByShopeeMerchantId(shopId)
+//                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
+//        KPI kpi = kpiRepository
+//                .findByMerchantId(merchant.getId())
+//                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
+//
+//        Map<Long, Double> customRoasMap1 = getCustomRoasForPeriod(shopId, from1, to1);
+//        Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
+//
+//
+//        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
+//        Map<Long, Map<Long, Long>> campaignProductRevenueMap = getCampaignProductRevenueForPeriod(shopId, from1, to1);
+//
+//        List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(
+//                shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, campaignId, kpi);
+//
+//        Map<Long, ProductAdsResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(
+//                shopId, biddingStrategy, type, state, productPlacement, title, from2, to2, campaignId, kpi)
+//                .stream()
+//                .collect(Collectors.toMap(ProductAdsResponseDto::getCampaignId, Function.identity()));
+//
+//        if (period1DataList.isEmpty()) {
+//            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+//        }
+//
+//        List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream().map(period1Data -> {
+//            ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
+//
+//            processCustomRoas(period1Data, customRoasMap1.get(period1Data.getCampaignId()), kpi);
+//            if (period2Data != null) {
+//                processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
+//            }
+//
+//            Long cId = period1Data.getCampaignId();
+//            Map<Long, Long> productRevenues = campaignProductRevenueMap.get(cId);
+//            period1Data.setSalesClassification(determineSalesClassification(productRevenues, totalRevenue));
+//
+//            populateComparisonFields(period1Data, period2Data);
+//
+//            return ProductAdsResponseWrapperDto.builder()
+//                    .campaignId(period1Data.getCampaignId())
+//                    .from1(from1)
+//                    .to1(to1)
+//                    .from2(from2)
+//                    .to2(to2)
+//                    .data(Collections.singletonList(period1Data))
+//                    .build();
+//        }).collect(Collectors.toList());
+//
+//        int start = (int) pageable.getOffset();
+//        int end = Math.min((start + pageable.getPageSize()), resultList.size());
+//        if (start > resultList.size()) {
+//            return new PageImpl<>(Collections.emptyList(), pageable, resultList.size());
+//        }
+//        return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
+//    }
 
     private Long getTotalRevenueForPeriod(String shopId, LocalDateTime from, LocalDateTime to) {
         List<AggregationOperation> ops = new ArrayList<>();
@@ -368,7 +575,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         AggregationResults<Document> adsResults = mongoTemplate.aggregate(newAggregation(adsOps), "ProductAds", Document.class);
         List<ProductAdsResponseDto> result = new ArrayList<>();
         for (Document doc : adsResults) {
-            ProductAdsResponseDto dto = mapDocumentToDto(doc);
+            ProductAdsResponseDto dto = mapDocumentToDto(doc, kpi);
             result.add(dto);
         }
         return result;
@@ -404,93 +611,25 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         return (currentValue - previousValue) / previousValue;
     }
 
-//    private String determineSalesClassification(Map<Long, Long> productRevenues, Long totalRevenue) {
-//        if (productRevenues == null || productRevenues.isEmpty() || totalRevenue == null || totalRevenue <= 0) {
-//            return "No Data";
-//        }
-//
-//        for (double productRevenue : productRevenues.values()) {
-//            double percentage = productRevenue / totalRevenue;
-//
-//            if (percentage >= 0.70) {
-//                return "Best Seller";
-//            } else if (percentage >= 0.20) {
-//                return "Middle Moving";
-//            }
-//        }
-//
-//        return "Slow Moving";
-//    }
-
-    // GANTI METHOD INI DI KODE LU:
     private String determineSalesClassification(Map<Long, Long> productRevenues, Long totalRevenue) {
         if (productRevenues == null || productRevenues.isEmpty() || totalRevenue == null || totalRevenue <= 0) {
             return "No Data";
         }
 
-        // Hitung total revenue campaign ini
-        long campaignTotalRevenue = productRevenues.values()
-                .stream()
-                .mapToLong(Long::longValue)
-                .sum();
+        for (double productRevenue : productRevenues.values()) {
+            double percentage = ((productRevenue) / totalRevenue);
 
-        // Hitung persentase kontribusi campaign ini terhadap total revenue
-        double percentage = (double) campaignTotalRevenue / totalRevenue;
-
-        // Klasifikasi berdasarkan kontribusi
-        if (percentage >= 0.20) {  // Campaign besar (20% ke atas)
-            return "Best Seller";
-        } else if (percentage >= 0.05) {  // Campaign sedang (5%-19%)
-            return "Middle Moving";
-        } else {  // Campaign kecil (di bawah 5%)
-            return "Slow Moving";
-        }
-    }
-
-    // TAMBAHIN METHOD BARU INI JUGA (taruh setelah method determineSalesClassification):
-    private Map<String, String> calculateAllCampaignClassifications(Map<Long, Map<Long, Long>> allCampaignProductRevenueMap, Long totalRevenue) {
-        Map<String, String> classifications = new HashMap<>();
-
-        if (allCampaignProductRevenueMap == null || allCampaignProductRevenueMap.isEmpty() || totalRevenue == null || totalRevenue <= 0) {
-            return classifications;
-        }
-
-        // Hitung revenue per campaign
-        Map<Long, Long> campaignRevenues = new HashMap<>();
-        for (Map.Entry<Long, Map<Long, Long>> entry : allCampaignProductRevenueMap.entrySet()) {
-            Long campaignId = entry.getKey();
-            long campaignRevenue = entry.getValue().values().stream().mapToLong(Long::longValue).sum();
-            campaignRevenues.put(campaignId, campaignRevenue);
-        }
-
-        // Sort campaign berdasarkan revenue descending
-        List<Map.Entry<Long, Long>> sortedCampaigns = campaignRevenues.entrySet()
-                .stream()
-                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
-                .collect(Collectors.toList());
-
-        // Hitung cumulative dan tentukan klasifikasi
-        long cumulativeRevenue = 0;
-        for (Map.Entry<Long, Long> entry : sortedCampaigns) {
-            cumulativeRevenue += entry.getValue();
-            double cumulativePercentage = (double) cumulativeRevenue / totalRevenue;
-
-            String classification;
-            if (cumulativePercentage <= 0.70) {
-                classification = "Best Seller";
-            } else if (cumulativePercentage <= 0.90) {
-                classification = "Middle Moving";
-            } else {
-                classification = "Slow Moving";
+            if (percentage >= 0.20) {
+                return "Best Seller";
+            } else if (percentage >= 0.10) {
+                return "Middle Moving";
             }
-
-            classifications.put(entry.getKey().toString(), classification);
         }
 
-        return classifications;
+        return "Slow Moving";
     }
 
-    private ProductAdsResponseDto mapDocumentToDto(Document doc) {
+    private ProductAdsResponseDto mapDocumentToDto(Document doc, KPI kpi) {
         Long campaignStartTime = getLong(doc, "campaignStartTime");
         Long campaignEndTime = getLong(doc, "campaignEndTime");
 
@@ -530,6 +669,18 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .campaignStartTime(campaignStartTime)
                 .campaignEndTime(campaignEndTime)
                 .period(period)
+                .insight(
+                        MathKt.renderInsight(
+                                MathKt.formulateRecommendation(
+                                        getDouble(doc, "cpc"),
+                                        getDouble(doc, "acos"),
+                                        getDouble(doc, "click"),
+                                        kpi,
+                                        null,
+                                        null
+                                )
+                        )
+                )
                 .build();
     }
 

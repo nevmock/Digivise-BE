@@ -283,4 +283,6 @@ public class ProductStockResponseDto {
 
     private String salesAvailability;
     private Boolean isSalesAvailable;
+
+    private String salesClassification;
 }

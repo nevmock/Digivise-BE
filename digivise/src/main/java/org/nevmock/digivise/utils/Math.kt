@@ -1,6 +1,7 @@
 package org.nevmock.digivise.utils
 
 import org.nevmock.digivise.domain.model.KPI
+import kotlin.math.abs
 
 enum class ActionType {
     DECREASE_PROPORTIONAL_CPC,    // Turunkan bid proporsional berdasarkan selisih CPC
@@ -26,7 +27,7 @@ fun getAdjustment(diff: Double, scaleFactor: Double): Double {
 
 fun renderInsight(rec: Recommendation): String = when (rec.action) {
     ActionType.DECREASE_PROPORTIONAL_CPC ->
-        "Turunkan bid proporsional dari CPC (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%)"
+        "Turunkan bid proporsional dari CPC (contoh: ${"%.1f".format(abs(rec.adjustment!! * 100))}%)"
 
     ActionType.INCREASE_BID ->
         "Naikkan bid sebanyak ${"%.1f".format(rec.adjustment!! * 100)}%"
@@ -47,7 +48,7 @@ fun renderInsight(rec: Recommendation): String = when (rec.action) {
         "Turunkan bid berdasarkan ACOS error (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%), tapi jangan sampai di bawah min bid"
 
     ActionType.DECREASE_SLIGHT ->
-        "Turunkan bid sedikit (karena keduanya di atas KPI) (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%)"
+        "Turunkan bid sedikit (contoh: ${"%.1f".format(abs(rec.adjustment!! * 100))}%)"
 
     ActionType.QUEUE_EVALUATION ->
         "Biarkan, tapi masuk antrian evaluasi (bisa tunggu sampai klik cukup untuk keputusan)"
@@ -75,9 +76,6 @@ fun formulateRecommendation(
     val slightAcosOver = overAcos && (acos - kpi.maxAcos) <= (kpi.maxAcos * 0.1)
     val largeAcosOver = overAcos && !slightAcosOver
 
-    fun adjCpc() = getAdjustment(cpc - kpi.maxCpc, kpi.cpcScaleFactor)
-    fun adjAcos() = getAdjustment(acos - kpi.maxAcos, kpi.acosScaleFactor)
-
     if (budget != null && roas != null && kpi.roasKpi != null) {
         return Recommendation(
             ActionType.IS_ROAS,
@@ -88,11 +86,17 @@ fun formulateRecommendation(
     return when {
         // CPC tinggi & ACOS sangat tinggi & klik banyak
         overCpc && largeAcosOver && manyKlik ->
-            Recommendation(ActionType.DECREASE_PROPORTIONAL_CPC, adjCpc())
+            Recommendation(ActionType.DECREASE_PROPORTIONAL_CPC, getAdjustment(
+                acos - kpi.maxAcos,
+                kpi.acosScaleFactor
+            ))
 
         // CPC tinggi & ACOS sedikit tinggi & klik banyak
         overCpc && slightAcosOver && manyKlik ->
-            Recommendation(ActionType.DECREASE_SLIGHT, adjCpc())
+            Recommendation(ActionType.DECREASE_SLIGHT, getAdjustment(
+                acos - kpi.maxAcos,
+                kpi.acosScaleFactor
+            ))
 
         // CPC tinggi & ACOS efisien & klik banyak
         overCpc && efficientAcos && manyKlik ->
@@ -104,11 +108,17 @@ fun formulateRecommendation(
 
         // CPC baik & ACOS di atas & klik sedikit
         goodCpc && slightAcosOver && fewKlik ->
-            Recommendation(ActionType.DECREASE_ACOS, adjAcos())
+            Recommendation(ActionType.DECREASE_ACOS, getAdjustment(
+                acos - kpi.maxAcos,
+                kpi.acosScaleFactor
+            ))
 
         // CPC baik & ACOS sangat tinggi & klik sedikit
         goodCpc && largeAcosOver && fewKlik ->
-            Recommendation(ActionType.DECREASE_ACOS_WITH_LIMIT, adjAcos())
+            Recommendation(ActionType.DECREASE_ACOS_WITH_LIMIT, getAdjustment(
+                acos - kpi.maxAcos,
+                kpi.acosScaleFactor
+            ))
 
         // CPC tinggi & ACOS tinggi & klik sedikit
         overCpc && overAcos && fewKlik ->
