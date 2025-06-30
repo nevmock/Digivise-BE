@@ -21,15 +21,17 @@ data class Recommendation(
     val adjustment: Double? = null
 )
 
-fun getAdjustment(diff: Double, scaleFactor: Double): Double {
-    return -(diff / scaleFactor)
+fun getAdjustment(diff: Double, scaleFactor: Double, maxAdjustment: Double): Double {
+    val rawAdjustment = -(diff / scaleFactor)
+    return rawAdjustment.coerceIn(-maxAdjustment, maxAdjustment)
 }
+
 fun renderInsight(rec: Recommendation): String = when (rec.action) {
     ActionType.DECREASE_PROPORTIONAL_CPC ->
-        "Turunkan bid proporsional dari CPC (contoh: ${"%.1f".format(abs(rec.adjustment!! * 100))}%)"
+        "Turunkan bid proporsional dari CPC (contoh: ${"%.1f".format(abs(rec.adjustment!!))}%)"
 
     ActionType.INCREASE_BID ->
-        "Naikkan bid sebanyak ${"%.1f".format(rec.adjustment!! * 100)}%"
+        "Naikkan bid sebanyak ${"%.1f".format(rec.adjustment!!)}%"
 
     ActionType.KEEP ->
         "Biarkan tanpa perubahan"
@@ -38,23 +40,23 @@ fun renderInsight(rec: Recommendation): String = when (rec.action) {
         "Matikan keyword / iklan ini"
 
     ActionType.DECREASE_ACOS ->
-        "Turunkan bid berdasarkan ACOS error (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%)"
+        "Turunkan bid berdasarkan ACOS error (contoh: ${"%.1f".format(rec.adjustment!!)}%)"
 
     ActionType.WAIT_FOR_MORE_CLICKS ->
         "Tunggu sampai klik lebih banyak dulu (tandai evaluasi nanti)"
 
     ActionType.DECREASE_ACOS_WITH_LIMIT ->
-        "Turunkan bid berdasarkan ACOS error (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%), tapi jangan sampai di bawah min bid"
+        "Turunkan bid berdasarkan ACOS error (contoh:-${"%.1f".format(rec.adjustment!!)}%), tapi jangan sampai di bawah min bid"
 
     ActionType.DECREASE_SLIGHT ->
-        "Turunkan bid sedikit (contoh: ${"%.1f".format(abs(rec.adjustment!! * 100))}%)"
+        "Turunkan bid sedikit (contoh: ${"%.1f".format(abs(rec.adjustment!!))}%)"
 
     ActionType.QUEUE_EVALUATION ->
         "Biarkan, tapi masuk antrian evaluasi (bisa tunggu sampai klik cukup untuk keputusan)"
 
     ActionType.IS_ROAS ->
         // Roas bentuknya adalah rupiah, jadi persen dari current budget dan rupiahnya
-        "Targetkan budget menjadi ${"%.1f".format(rec.adjustment!! * 100)}% dari total revenue yang dihasilkan dari ROAS KPI (contoh: ${"%.1f".format(rec.adjustment!! * 100)}%)"
+        "Targetkan budget menjadi ${"%.1f".format(rec.adjustment!!)}% dari total revenue yang dihasilkan dari ROAS KPI (contoh: ${"%.1f".format(rec.adjustment!!)}%)"
 }
 
 fun formulateRecommendation(
@@ -82,19 +84,25 @@ fun formulateRecommendation(
         )
     }
 
+    if (cpc == 0.0 && acos == 0.0) {
+        return Recommendation(ActionType.KEEP)
+    }
+
     return when {
         // CPC tinggi & ACOS sangat tinggi & klik banyak
         overCpc && largeAcosOver && manyKlik ->
             Recommendation(ActionType.DECREASE_PROPORTIONAL_CPC, getAdjustment(
-                acos - kpi.maxAcos,
-                kpi.acosScaleFactor
+                cpc - kpi.maxCpc,
+                kpi.cpcScaleFactor,
+                kpi.maxAdjustment
             ))
 
         // CPC tinggi & ACOS sedikit tinggi & klik banyak
         overCpc && slightAcosOver && manyKlik ->
             Recommendation(ActionType.DECREASE_SLIGHT, getAdjustment(
-                acos - kpi.maxAcos,
-                kpi.acosScaleFactor
+                cpc - kpi.maxCpc,
+                kpi.acosScaleFactor,
+                kpi.maxAdjustment
             ))
 
         // CPC tinggi & ACOS efisien & klik banyak
@@ -109,14 +117,16 @@ fun formulateRecommendation(
         goodCpc && slightAcosOver && fewKlik ->
             Recommendation(ActionType.DECREASE_ACOS, getAdjustment(
                 acos - kpi.maxAcos,
-                kpi.acosScaleFactor
+                kpi.acosScaleFactor,
+                kpi.maxAdjustment
             ))
 
         // CPC baik & ACOS sangat tinggi & klik sedikit
         goodCpc && largeAcosOver && fewKlik ->
             Recommendation(ActionType.DECREASE_ACOS_WITH_LIMIT, getAdjustment(
                 acos - kpi.maxAcos,
-                kpi.acosScaleFactor
+                kpi.acosScaleFactor,
+                kpi.maxAdjustment
             ))
 
         // CPC tinggi & ACOS tinggi & klik sedikit
@@ -133,7 +143,7 @@ fun formulateRecommendation(
 
         // CPC baik & ACOS efisien & klik banyak
         goodCpc && efficientAcos && manyKlik ->
-            Recommendation(ActionType.INCREASE_BID, getAdjustment(acos - kpi.maxAcos, kpi.acosScaleFactor))
+            Recommendation(ActionType.INCREASE_BID, getAdjustment(cpc - kpi.maxCpc, kpi.acosScaleFactor, kpi.maxAdjustment))
 
         else ->
             Recommendation(ActionType.KEEP)
