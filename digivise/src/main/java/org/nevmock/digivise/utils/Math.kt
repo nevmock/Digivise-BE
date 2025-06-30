@@ -22,9 +22,8 @@ data class Recommendation(
 )
 
 fun getAdjustment(diff: Double, scaleFactor: Double): Double {
-    return -(diff / scaleFactor) / 100.0
+    return -(diff / scaleFactor)
 }
-
 fun renderInsight(rec: Recommendation): String = when (rec.action) {
     ActionType.DECREASE_PROPORTIONAL_CPC ->
         "Turunkan bid proporsional dari CPC (contoh: ${"%.1f".format(abs(rec.adjustment!! * 100))}%)"

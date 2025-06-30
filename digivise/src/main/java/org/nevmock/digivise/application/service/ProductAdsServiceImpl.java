@@ -57,7 +57,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
             String type,
             String state,
             String productPlacement,
-            String salesClassification, // Filter parameter
+            String salesClassification,
             String title,
             Long campaignId
     ) {
@@ -517,6 +517,11 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         if (campaignId != null) {
             adsOps.add(match(Criteria.where("data.entry_list.campaign.campaign_id").is(campaignId)));
         }
+
+        // Ini buat debugging
+        adsOps.add(match(Criteria.where("data.entry_list.report.cpc").gt(0)));
+
+
         adsOps.add(sort(Sort.by(Sort.Direction.DESC, "from")));
 
         adsOps.add(group("data.entry_list.campaign.campaign_id")
