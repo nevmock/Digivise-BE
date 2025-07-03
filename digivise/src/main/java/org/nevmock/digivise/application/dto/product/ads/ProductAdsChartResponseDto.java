@@ -21,6 +21,7 @@ public class ProductAdsChartResponseDto {
     private Double dailyBudget;
     private Double roas;
     private Double cost;
+    private Double checkout;
     private Long shopeeFrom;
     private Long shopeeTo;
     private LocalDateTime createdAt;
