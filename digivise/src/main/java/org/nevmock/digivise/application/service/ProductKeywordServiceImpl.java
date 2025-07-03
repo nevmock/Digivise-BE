@@ -215,7 +215,6 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     private void populateComparisonFields(ProductKeywordResponseDto current, ProductKeywordResponseDto previous) {
         if (previous == null) return;
 
-        current.setAcos(roundDouble(calculateChange(current.getAcos(), previous.getAcos())));
         current.setBroadGmvComparison(roundDouble(calculateChange(current.getBroadGmv(), previous.getBroadGmv())));
         current.setBroadOrderComparison(roundDouble(calculateChange(current.getBroadOrder(), previous.getBroadOrder())));
         current.setBroadOrderAmountComparison(roundDouble(calculateChange(current.getBroadOrderAmount(), previous.getBroadOrderAmount())));

@@ -573,7 +573,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("avgRoas").as("roas")
                 .and("avgCr").as("cr")
                 .and("totalCpdc").divide(100000.0).as("cpdc")
-                .and("totalBroadGmv").as("broadGmv")
+                .and("totalBroadGmv").divide(100000.0).as("broadGmv")
                 .andInclude("biddingStrategy", "productPlacement", "type", "state", "image", "title", "customRoas", "totalBroadOrder", "totalBroadOrderAmount", "campaignStartTime", "campaignEndTime")
         );
 
@@ -593,7 +593,6 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         currentData.setCtrComparison(roundDouble(calculateComparison(currentData.getCtr(), previousData != null ? previousData.getCtr() : null)));
         currentData.setImpressionComparison(roundDouble(calculateComparison(currentData.getImpression(), previousData != null ? previousData.getImpression() : null)));
         currentData.setClickComparison(roundDouble(calculateComparison(currentData.getClick(), previousData != null ? previousData.getClick() : null)));
-        currentData.setBroadGmv(roundDouble(calculateComparison(currentData.getBroadGmv(), previousData != null ? previousData.getBroadGmv() : null)));
         currentData.setRoasComparison(roundDouble(calculateComparison(currentData.getRoas(), previousData != null ? previousData.getRoas() : null)));
         currentData.setCrComparison(roundDouble(calculateComparison(currentData.getCr(), previousData != null ? previousData.getCr() : null)));
         currentData.setDirectOrderComparison(roundDouble(calculateComparison(currentData.getDirectOrder(), previousData != null ? previousData.getDirectOrder() : null)));
