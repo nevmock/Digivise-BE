@@ -654,7 +654,7 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
                 .and("avgConfirmedSales").as("confirmedSales")
                 .and("avgConfirmedUnits").as("confirmedUnits")
                 .and("avgConfirmedBuyers").as("confirmedBuyers")
-                .and("avgUvToAddToCartRate").as("uvToAddToCartRate")
+                .and("avgUvToAddToCartRate").multiply(100).as("uvToAddToCartRate")
                 .and("avgUvToPlacedBuyersRate").as("uvToPlacedBuyersRate")
                 .and("avgUvToConfirmedBuyersRate").as("uvToConfirmedBuyersRate")
                 .and("avgPlacedBuyersToConfirmedBuyersRate").as("placedBuyersToConfirmedBuyersRate")

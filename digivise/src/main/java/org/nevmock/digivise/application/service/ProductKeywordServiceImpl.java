@@ -255,6 +255,18 @@ public class ProductKeywordServiceImpl implements ProductKeywordService {
     }
 
     private String generateInsight(ProductKeywordResponseDto dto, KPI kpi) {
+        if (dto.getCpc() == null) {
+            dto.setCpc(0.0);
+        }
+
+        if (dto.getAcos() == null) {
+            dto.setAcos(0.0);
+        }
+
+        if (dto.getClick() == null) {
+            dto.setClick(0.0);
+        }
+
         return MathKt.renderInsight(
                 MathKt.formulateRecommendation(
                         dto.getCpc(),
