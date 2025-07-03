@@ -52,9 +52,10 @@ public class ProductAdsChartServiceImpl implements ProductAdsChartService {
                 .andExpression("data.entry_list.report.click").as("click")
                 .andExpression("data.entry_list.report.ctr").as("ctr")
                 .andExpression("data.entry_list.report.broad_order_amount").as("broadOrderAmount")
-                .andExpression("data.entry_list.report.broad_gmv").as("broadGmv")
-                .andExpression("data.entry_list.campaign.daily_budget").as("dailyBudget")
+                .andExpression("data.entry_list.report.broad_gmv").divide(100000.0).as("broadGmv")
+                .andExpression("data.entry_list.campaign.daily_budget").divide(100000.0).as("dailyBudget")
                 .andExpression("data.entry_list.report.broad_roi").as("roas")
+                .andExpression("data.entry_list.report.cost").divide(100000.0).as("cost")
                 .andExpression("from").as("shopeeFrom")
                 .andExpression("to").as("shopeeTo")
                 .andExpression("createdAt").as("createdAt");
@@ -115,6 +116,7 @@ public class ProductAdsChartServiceImpl implements ProductAdsChartService {
         dto.setCreatedAt(getDateTime(doc, "createdAt"));
         dto.setShopeeFrom(getLong(doc, "shopeeFrom"));
         dto.setShopeeTo(getLong(doc, "shopeeTo"));
+        dto.setCost(getDouble(doc, "cost"));
         return dto;
     }
 
