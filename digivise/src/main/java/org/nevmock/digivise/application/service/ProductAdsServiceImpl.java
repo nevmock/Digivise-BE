@@ -569,7 +569,7 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 .and("totalDirectGmv").divide(100000.0).as("directGmv")
                 .and("avgDirectRoi").as("directRoi")
                 .and("avgDirectCir").multiply(100).as("directCir")
-                .and("avgDirectCr").as("directCr")
+                .and("avgDirectCr").multiply(100).as("directCr")
                 .and("avgRoas").as("roas")
                 .and("avgCr").as("cr")
                 .and("totalCpdc").divide(100000.0).as("cpdc")
