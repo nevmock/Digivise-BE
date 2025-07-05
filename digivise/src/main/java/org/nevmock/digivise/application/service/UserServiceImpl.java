@@ -129,6 +129,9 @@ public class UserServiceImpl implements UserService {
                 .factoryAddress(merchant.getFactoryAddress())
                 .sectorIndustry(merchant.getSectorIndustry())
                 .name(merchant.getName())
+                .username(
+                        merchant.getUsername()
+                )
                 .lastLogin(merchant.getLastLogin())
                 .build();
     }

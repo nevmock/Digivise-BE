@@ -45,13 +45,14 @@ public class ProductStockController {
 
     @GetMapping("/live")
     public ResponseEntity<ProductStockResponseWrapperDto> fetchStockLive(
-            @RequestParam String username,
+            //@RequestParam String username,
+            @RequestParam String shopId,
             @RequestParam String type,
             @RequestParam(defaultValue = "true") boolean isAsc,
             @RequestParam(defaultValue = "10") int pageSize
     ) {
         try {
-            return ResponseEntity.ok(productStockService.fetchStockLive(username, type, isAsc, pageSize));
+            return ResponseEntity.ok(productStockService.fetchStockLive(shopId, type, isAsc, pageSize));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
         }

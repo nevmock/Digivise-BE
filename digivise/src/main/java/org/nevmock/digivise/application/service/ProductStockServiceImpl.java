@@ -9,7 +9,11 @@ import org.bson.types.ObjectId;
 import org.nevmock.digivise.application.dto.product.stock.ModelStockDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseDto;
 import org.nevmock.digivise.application.dto.product.stock.ProductStockResponseWrapperDto;
+import org.nevmock.digivise.domain.model.Merchant;
 import org.nevmock.digivise.domain.port.in.ProductStockService;
+import org.nevmock.digivise.domain.port.out.MerchantRepository;
+import org.nevmock.digivise.domain.port.out.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -40,6 +44,9 @@ import java.util.stream.Collectors;
 public class ProductStockServiceImpl implements ProductStockService {
 
     private final MongoTemplate mongoTemplate;
+
+    @Autowired
+    private final MerchantRepository merchantRepository;
 
     public Page<ProductStockResponseWrapperDto> findByRange(
             String shopId,
@@ -285,9 +292,16 @@ public class ProductStockServiceImpl implements ProductStockService {
     ) {
         final String URL = "http://103.150.116.30:1337/api/v1/shopee-seller/stock-live";
 
+        Merchant merchant = merchantRepository.findByShopeeMerchantId(username)
+                .orElseThrow(() -> new RuntimeException("Merchant not found for username: " + username));
+
+        if (merchant.getUsername() == null || merchant.getUsername().isEmpty()) {
+            throw new RuntimeException("Merchant username is not set for: " + username);
+        }
+
         // 1. Setup Request Body
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("username", username);
+        requestBody.put("username", merchant.getUsername());
         requestBody.put("type", type);
         requestBody.put("isAsc", String.valueOf(isAsc));
         requestBody.put("pageSize", String.valueOf(pageSize));
