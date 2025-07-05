@@ -328,6 +328,7 @@ public class ProductStockServiceImpl implements ProductStockService {
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException | InterruptedException e) {
+            System.err.println("Error sending HTTP request: " + e.getMessage());
             throw new RuntimeException("Error sending HTTP request", e);
         }
 
