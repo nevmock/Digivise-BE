@@ -1,5 +1,8 @@
 package org.nevmock.digivise.application.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -15,8 +18,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.http.*;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -170,14 +182,6 @@ public class ProductStockServiceImpl implements ProductStockService {
     }
 
     private ProductStockResponseDto mapToDto(Document doc) {
-        Long totalStock = (getLong(doc, "totalAvailableStock") + getLong(doc, "soldCount"));
-        Long currentStockPercentage = totalStock > 0
-                ? (getLong(doc, "totalAvailableStock") * 100) / totalStock
-                : 0L;
-
-        String salesAvailability = currentStockPercentage <= 70 ? "Stock mencapai 70% kebawah" : "Stock diatas 70%";
-        Boolean isSalesAvailable = currentStockPercentage > 70;
-
         ProductStockResponseDto dto = ProductStockResponseDto.builder()
                 .id(getObjectIdAsString(doc, "id"))
                 .uuid(getString(doc, "uuid"))
@@ -232,10 +236,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .canNotAppealTransifyKey(getString(doc, "canNotAppealTransifyKey"))
                 .referenceId(getLong(doc, "referenceId"))
                 .appealStatus(getInteger(doc, "appealStatus"))
-                .salesAvailability(
-                        salesAvailability
-                )
-                .isSalesAvailable(isSalesAvailable)
+
                 .build();
 
         
@@ -246,6 +247,9 @@ public class ProductStockServiceImpl implements ProductStockService {
             List<ModelStockDto> modelStocks = modelList.stream()
                     .map(modelStock -> mapModelStockDto(modelStock, parentCreated))
                     .collect(Collectors.toList());
+
+            dto.setSalesAvailability(getSalesAvailability(modelStocks));
+
             dto.setModelStocks(modelStocks);
         }
 
@@ -273,6 +277,237 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .build();
     }
 
+    public ProductStockResponseWrapperDto fetchStockLive(
+            String username,
+            String type,
+            boolean isAsc,
+            int pageSize
+    ) {
+        final String URL = "http://103.150.116.30:1337/api/v1/shopee-seller/stock-live";
+
+        // 1. Setup Request Body
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("username", username);
+        requestBody.put("type", type);
+        requestBody.put("isAsc", String.valueOf(isAsc));
+        requestBody.put("pageSize", String.valueOf(pageSize));
+
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        String jsonBody;
+        try {
+            jsonBody = objectMapper.writeValueAsString(requestBody);
+        } catch (IOException e) {
+            throw new RuntimeException("Error converting request body to JSON", e);
+        }
+        HttpClient httpClient = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(URL))
+                .header("Content-Type", "application/json")
+                .method("GET", HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        HttpResponse<String> response;
+
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Error sending HTTP request", e);
+        }
+
+
+        if (response.statusCode() == HttpStatus.OK.value()) {
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                JsonNode root = mapper.readTree(response.body());
+                JsonNode products = root.path("data").path("data").path("products");
+
+                List<ProductStockResponseDto> productDtos = new ArrayList<>();
+
+                for (JsonNode product : products) {
+                    ProductStockResponseDto dto = mapProductNode(product);
+                    productDtos.add(dto);
+                }
+
+                // Build Wrapper DTO
+                return ProductStockResponseWrapperDto.builder()
+                        .data(productDtos)
+                        // Set other fields as needed
+                        .build();
+
+            } catch (Exception e) {
+                throw new RuntimeException("Error parsing response", e);
+            }
+        } else {
+            throw new RuntimeException("API request failed: ");
+        }
+    }
+
+//    private ProductStockResponseDto mapProductNode(JsonNode product) {
+//        return ProductStockResponseDto.builder()
+//                .id(product.path("id").asText())
+//                .productId(product.path("id").asLong())
+//                .name(product.path("name").asText())
+//                .status(product.path("status").asInt())
+//                .coverImage(product.path("cover_image").asText())
+//                .parentSku(product.path("parent_sku").asText())
+//                .priceMin(product.path("price_detail").path("price_min").asDouble())
+//                .priceMax(product.path("price_detail").path("price_max").asDouble())
+//                .totalAvailableStock(product.path("stock_detail").path("total_available_stock").asInt())
+//                .totalSellerStock(product.path("stock_detail").path("total_seller_stock").asInt())
+//                .modelStocks(mapModelStocks(product.path("model_list")))
+//                // Add other fields based on your DTO structure
+//                .build();
+//    }
+    private String getSalesAvailability(List<ModelStockDto> modelStocks) {
+        int availableCount = 0;
+
+        if (modelStocks == null || modelStocks.isEmpty()) {
+            return "0%";
+        }
+
+        for (ModelStockDto model : modelStocks) {
+            if (model.getTotalAvailableStock() != null && model.getTotalAvailableStock() > 0) {
+                availableCount++;
+            }
+        }
+
+        if (availableCount == 0) {
+            return "0%";
+        }
+
+        return (availableCount / modelStocks.size()) * 100 + "%";
+    }
+
+private ProductStockResponseDto mapProductNode(JsonNode product) {
+    JsonNode priceDetail = product.path("price_detail");
+    JsonNode stockDetail = product.path("stock_detail");
+    JsonNode advancedStock = stockDetail.path("advanced_stock");
+    JsonNode promotion = product.path("promotion");
+    JsonNode statistics = product.path("statistics");
+    JsonNode tag = product.path("tag");
+    JsonNode boostInfo = product.path("boost_info");
+    JsonNode appealInfo = product.path("appeal_info").path("ipr_appeal_info");
+
+    List<ModelStockDto> modelStocks = mapModelStocks(product.path("model_list"));
+
+    String salesAvailability = getSalesAvailability(modelStocks);
+
+    return ProductStockResponseDto.builder()
+            .id(product.path("id").asText())
+            .uuid(UUID.randomUUID().toString()) // Generate if not from API
+            .createdAt(LocalDateTime.now()) // Set current time or parse from API if available
+            .shopId("") // Set from context if available
+            .productId(product.path("id").asLong())
+            .name(product.path("name").asText())
+            .status(product.path("status").asInt())
+            .coverImage(product.path("cover_image").asText())
+            .parentSku(product.path("parent_sku").asText())
+
+            // Price Details
+            .priceMin(priceDetail.path("price_min").asDouble())
+            .priceMax(priceDetail.path("price_max").asDouble())
+            .hasDiscount(priceDetail.path("has_discount").asBoolean())
+            .maxDiscountPercentage(priceDetail.path("max_discount_percentage").asInt())
+            .maxDiscount(priceDetail.path("max_discount").asInt())
+            .sellingPriceMin(priceDetail.path("selling_price_min").asDouble())
+            .sellingPriceMax(priceDetail.path("selling_price_max").asDouble())
+
+            // Stock Details
+            .totalAvailableStock(stockDetail.path("total_available_stock").asInt())
+            .totalSellerStock(stockDetail.path("total_seller_stock").asInt())
+            .totalShopeeStock(stockDetail.path("total_shopee_stock").asInt())
+            .lowStockStatus(stockDetail.path("low_stock_status").asInt())
+            .enableStockReminder(stockDetail.path("enable_stock_reminder").asBoolean())
+            .modelSellerStockSoldOut(stockDetail.path("model_seller_stock_sold_out").asBoolean())
+            .modelShopeeStockSoldOut(stockDetail.path("model_shopee_stock_sold_out").asBoolean())
+            .advancedSellableStock(advancedStock.path("sellable_stock").asInt())
+            .advancedInTransitStock(advancedStock.path("in_transit_stock").asInt())
+            .enableStockReminderStatus(stockDetail.path("enable_stock_reminder_status").asInt())
+
+            // Promotion
+            .wholesale(promotion.path("wholesale").asBoolean())
+            .hasBundleDeal(promotion.path("has_bundle_deal").asBoolean())
+
+            // Statistics
+            .viewCount(statistics.path("view_count").asInt())
+            .likedCount(statistics.path("liked_count").asInt())
+            .soldCount(statistics.path("sold_count").asInt())
+
+            // Tags
+            .isVirtualSku(tag.path("is_virtual_sku").asBoolean())
+            .unlist(tag.path("unlist").asBoolean())
+            .hasDiscountTag(tag.path("has_discount").asBoolean())
+            .wholesaleTag(tag.path("wholesale").asBoolean())
+            .hasBundleDealTag(tag.path("has_bundle_deal").asBoolean())
+            .hasAddOnDeal(tag.path("has_add_on_deal").asBoolean())
+            .liveSku(tag.path("live_sku").asBoolean())
+            .ssp(tag.path("ssp").asBoolean())
+            .hasAmsCommission(tag.path("has_ams_commission").asBoolean())
+            .memberExclusive(tag.path("member_exclusive").asBoolean())
+            .isIprAppealing(tag.path("is_ipr_appealing").asBoolean())
+
+            // Boost Info
+            .boostEntryStatus(boostInfo.path("boost_entry_status").asInt())
+            .showBoostHistory(boostInfo.path("show_boost_history").asBoolean())
+            .boostCampaignId(boostInfo.path("campaign_id").asLong())
+
+            // Timestamps
+            .modifyTime(product.path("modify_time").asLong())
+            .createTime(product.path("create_time").asLong())
+            .scheduledPublishTime(product.path("scheduled_publish_time").asLong())
+            .mtskuItemId(product.path("mtsku_item_id").asLong())
+
+            // Appeal Info
+            .appealOpt(appealInfo.path("appeal_opt").asInt())
+            .canNotAppealTransifyKey(appealInfo.path("can_not_appeal_transify_key").asText())
+            .referenceId(appealInfo.path("reference_id").asLong())
+            .appealStatus(appealInfo.path("appeal_status").asInt())
+
+            // Model Stocks
+            .modelStocks(modelStocks)
+
+            // Comparison fields (set to 0 if not available)
+            .totalAvailableStockComparison(0.0)
+            .totalSellerStockComparison(0.0)
+            .totalShopeeStockComparison(0.0)
+            .advancedSellableStockComparison(0.0)
+            .advancedInTransitStockComparison(0.0)
+            .viewCountComparison(0.0)
+            .likedCountComparison(0.0)
+            .soldCountComparison(0.0)
+            .priceMinComparison(0.0)
+            .priceMaxComparison(0.0)
+            .sellingPriceMinComparison(0.0)
+            .sellingPriceMaxComparison(0.0)
+            .maxDiscountPercentageComparison(0.0)
+            .maxDiscountComparison(0.0)
+            .salesAvailability(
+                    salesAvailability
+            )
+            .build();
+}
+
+
+
+    private List<ModelStockDto> mapModelStocks(JsonNode modelList) {
+        List<ModelStockDto> models = new ArrayList<>();
+        for (JsonNode model : modelList) {
+            models.add(ModelStockDto.builder()
+                    .id(model.path("id").asLong())
+                    .name(model.path("name").asText())
+                    .sku(model.path("sku").asText())
+                    .isDefault(model.path("is_default").asBoolean())
+                    .image(model.path("image").asText())
+                    .totalAvailableStock(model.path("stock_detail").path("total_available_stock").asInt())
+                    .totalSellerStock(model.path("stock_detail").path("total_seller_stock").asInt())
+                    .soldCount(model.path("statistics").path("sold_count").asInt())
+                    .build());
+        }
+        return models;
+    }
     
     private String getString(Document doc, String key) {
         if (doc == null) return null;

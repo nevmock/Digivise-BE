@@ -42,5 +42,19 @@ public class ProductStockController {
         PageRequest pageRequest = PageRequest.of(page, limit);
         return ResponseEntity.ok(productStockService.findByRange(shopId, from1, to1, name, state, pageRequest));
     }
+
+    @GetMapping("/live")
+    public ResponseEntity<ProductStockResponseWrapperDto> fetchStockLive(
+            @RequestParam String username,
+            @RequestParam String type,
+            @RequestParam(defaultValue = "true") boolean isAsc,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        try {
+            return ResponseEntity.ok(productStockService.fetchStockLive(username, type, isAsc, pageSize));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
 }
 
