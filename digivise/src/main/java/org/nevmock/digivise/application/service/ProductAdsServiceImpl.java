@@ -45,8 +45,205 @@ public class ProductAdsServiceImpl implements ProductAdsService {
 
     @Autowired
     private KPIRepository kpiRepository;
-    @Override
-    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
+
+    private Map<Long, Long> getProductRevenuesForPeriod(String shopId, LocalDateTime from, LocalDateTime to) {
+        List<AggregationOperation> ops = new ArrayList<>();
+
+        ops.add(match(Criteria.where("shop_id").is(shopId)
+                .and("createdAt").gte(from).lte(to)));
+        ops.add(unwind("data"));
+
+        ops.add(project()
+                .and("data.id").as("productId")
+                .and(ConvertOperators.valueOf("data.statistics.sold_count")
+                        .convertToInt()).as("soldCount")
+                .and(ConvertOperators.valueOf("data.price_detail.selling_price_max")
+                        .convertToDouble()).as("sellingPriceMax")
+        );
+
+        ops.add(project()
+                .and("productId").as("productId")
+                .and(Multiply.valueOf("sellingPriceMax").multiplyBy("soldCount")).as("revenue")
+        );
+
+        ops.add(group("productId").sum("revenue").as("productRevenue"));
+
+        // Sort by revenue descending
+        ops.add(sort(Sort.by(Sort.Direction.DESC, "productRevenue")));
+
+        ops.add(project()
+                .and("_id").as("productId")
+                .and("productRevenue").as("productRevenue")
+                .andExclude("_id")
+        );
+
+        AggregationResults<Document> results = mongoTemplate.aggregate(newAggregation(ops), "ProductStock", Document.class);
+
+        Map<Long, Long> productRevenueMap = new LinkedHashMap<>(); // Use LinkedHashMap to maintain sort order
+
+        for (Document doc : results) {
+            Long productId = getLong(doc, "productId");
+            Double productRevenue = getDouble(doc, "productRevenue");
+
+            if (productId != null && productRevenue != null) {
+                long roundedRevenue = productRevenue.longValue();
+                productRevenueMap.put(productId, roundedRevenue);
+            }
+        }
+
+        return productRevenueMap;
+    }
+
+    // Updated method to get campaign product revenues with product classification
+    private Map<Long, Map<Long, ProductClassificationInfo>> getCampaignProductRevenueWithClassification(String shopId, LocalDateTime from, LocalDateTime to) {
+        // First get all products sorted by revenue
+        Map<Long, Long> allProductRevenues = getProductRevenuesForPeriod(shopId, from, to);
+
+        // Calculate total revenue
+        long totalRevenue = allProductRevenues.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+
+        // Classify products based on cumulative percentage
+        Map<Long, String> productClassificationMap = classifyProducts(allProductRevenues, totalRevenue);
+
+        // Now get campaign-product mapping
+        List<AggregationOperation> ops = new ArrayList<>();
+
+        ops.add(match(Criteria.where("shop_id").is(shopId)
+                .and("createdAt").gte(from).lte(to)));
+        ops.add(unwind("data"));
+
+        ops.add(project()
+                .and("data.boost_info.campaign_id").as("campaignId")
+                .and("data.id").as("productId")
+                .and(ConvertOperators.valueOf("data.statistics.sold_count")
+                        .convertToInt()).as("soldCount")
+                .and(ConvertOperators.valueOf("data.price_detail.selling_price_max")
+                        .convertToDouble()).as("sellingPriceMax")
+        );
+
+        ops.add(project()
+                .and("campaignId").as("campaignId")
+                .and("productId").as("productId")
+                .and(Multiply.valueOf("sellingPriceMax").multiplyBy("soldCount")).as("revenue")
+        );
+
+        ops.add(group("campaignId", "productId").sum("revenue").as("productRevenue"));
+
+        AggregationResults<Document> results = mongoTemplate.aggregate(newAggregation(ops), "ProductStock", Document.class);
+
+        Map<Long, Map<Long, ProductClassificationInfo>> campaignProductMap = new HashMap<>();
+
+        for (Document doc : results) {
+            Document idDoc = doc.get("_id", Document.class);
+            Long campaignId = getLong(idDoc, "campaignId");
+            Long productId = getLong(idDoc, "productId");
+            Double productRevenue = getDouble(doc, "productRevenue");
+
+            if (campaignId != null && productId != null && productRevenue != null) {
+                long roundedRevenue = productRevenue.longValue();
+                String classification = productClassificationMap.getOrDefault(productId, "No Data");
+
+                ProductClassificationInfo info = new ProductClassificationInfo(roundedRevenue, classification);
+
+                campaignProductMap
+                        .computeIfAbsent(campaignId, k -> new HashMap<>())
+                        .put(productId, info);
+            }
+        }
+
+        return campaignProductMap;
+    }
+
+    // Helper method to classify products based on cumulative percentage
+    private Map<Long, String> classifyProducts(Map<Long, Long> productRevenues, long totalRevenue) {
+        Map<Long, String> classificationMap = new HashMap<>();
+
+        if (totalRevenue <= 0) {
+            // If no revenue, mark all as "No Data"
+            productRevenues.keySet().forEach(productId -> classificationMap.put(productId, "No Data"));
+            return classificationMap;
+        }
+
+        long cumulativeRevenue = 0;
+
+        for (Map.Entry<Long, Long> entry : productRevenues.entrySet()) {
+            Long productId = entry.getKey();
+            Long revenue = entry.getValue();
+
+            cumulativeRevenue += revenue;
+            double cumulativePercentage = (double) cumulativeRevenue / totalRevenue;
+
+            String classification;
+            if (cumulativePercentage <= 0.50) {
+                classification = "Fast Moving";
+            } else if (cumulativePercentage <= 0.80) {
+                classification = "Middle Moving";
+            } else {
+                classification = "Slow Moving";
+            }
+
+            classificationMap.put(productId, classification);
+        }
+
+        return classificationMap;
+    }
+
+    // Updated method to determine campaign sales classification
+    private String determineCampaignSalesClassification(Map<Long, ProductClassificationInfo> campaignProducts) {
+        if (campaignProducts == null || campaignProducts.isEmpty()) {
+            return "No Data";
+        }
+
+        // Count products by classification
+        Map<String, Long> classificationCount = new HashMap<>();
+        long totalRevenue = 0;
+
+        for (ProductClassificationInfo info : campaignProducts.values()) {
+            totalRevenue += info.getRevenue();
+            classificationCount.merge(info.getClassification(), info.getRevenue(), Long::sum);
+        }
+
+        if (totalRevenue <= 0) {
+            return "No Data";
+        }
+
+        // Determine dominant classification by revenue
+        String dominantClassification = "No Data";
+        long maxRevenue = 0;
+
+        for (Map.Entry<String, Long> entry : classificationCount.entrySet()) {
+            if (entry.getValue() > maxRevenue) {
+                maxRevenue = entry.getValue();
+                dominantClassification = entry.getKey();
+            }
+        }
+
+        return dominantClassification;
+    }
+
+    // Helper class to store product classification info
+    private static class ProductClassificationInfo {
+        private final long revenue;
+        private final String classification;
+
+        public ProductClassificationInfo(long revenue, String classification) {
+            this.revenue = revenue;
+            this.classification = classification;
+        }
+
+        public long getRevenue() {
+            return revenue;
+        }
+
+        public String getClassification() {
+            return classification;
+        }
+    }
+
+    // Updated main method using new classification system
+    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotals(
             String shopId,
             String biddingStrategy,
             LocalDateTime from1,
@@ -71,8 +268,8 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         Map<Long, Double> customRoasMap1 = getCustomRoasForPeriod(shopId, from1, to1);
         Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
 
-        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
-        Map<Long, Map<Long, Long>> campaignProductRevenueMap = getCampaignProductRevenueForPeriod(shopId, from1, to1);
+        // Use new classification system
+        Map<Long, Map<Long, ProductClassificationInfo>> campaignProductMap = getCampaignProductRevenueWithClassification(shopId, from1, to1);
 
         List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(
                 shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, campaignId, kpi);
@@ -95,9 +292,10 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                         processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
                     }
 
+                    // Use new classification system
                     Long cId = period1Data.getCampaignId();
-                    Map<Long, Long> productRevenues = campaignProductRevenueMap.get(cId);
-                    String calculatedSalesClassification = determineSalesClassification(productRevenues, totalRevenue);
+                    Map<Long, ProductClassificationInfo> campaignProducts = campaignProductMap.get(cId);
+                    String calculatedSalesClassification = determineCampaignSalesClassification(campaignProducts);
                     period1Data.setSalesClassification(calculatedSalesClassification);
 
                     populateComparisonFields(period1Data, period2Data);
@@ -113,17 +311,15 @@ public class ProductAdsServiceImpl implements ProductAdsService {
                 })
                 .filter(wrapper -> {
                     if (salesClassification == null || salesClassification.isBlank()) {
-                        return true; // Tidak ada filter, tampilkan semua
+                        return true; // No filter, show all
                     }
 
                     String actualSalesClassification = wrapper.getData().get(0).getSalesClassification();
-
-                    // Case-insensitive comparison
                     return salesClassification.equalsIgnoreCase(actualSalesClassification);
                 })
                 .collect(Collectors.toList());
 
-        // Pagination setelah filtering
+        // Pagination after filtering
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), resultList.size());
         if (start > resultList.size()) {
@@ -131,6 +327,198 @@ public class ProductAdsServiceImpl implements ProductAdsService {
         }
         return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
     }
+
+    @Override
+    // Updated optimized method using new classification system
+    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
+            String shopId,
+            String biddingStrategy,
+            LocalDateTime from1,
+            LocalDateTime to1,
+            LocalDateTime from2,
+            LocalDateTime to2,
+            Pageable pageable,
+            String type,
+            String state,
+            String productPlacement,
+            String salesClassification,
+            String title,
+            Long campaignId
+    ) {
+        // Get required data
+        Merchant merchant = merchantRepository
+                .findByShopeeMerchantId(shopId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
+        KPI kpi = kpiRepository
+                .findByMerchantId(merchant.getId())
+                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
+
+        // Pre-calculate classification for all campaigns using new system
+        Map<Long, Map<Long, ProductClassificationInfo>> campaignProductMap = getCampaignProductRevenueWithClassification(shopId, from1, to1);
+
+        Map<Long, String> salesClassificationMap = new HashMap<>();
+        for (Map.Entry<Long, Map<Long, ProductClassificationInfo>> entry : campaignProductMap.entrySet()) {
+            Long campaignId2 = entry.getKey();
+            Map<Long, ProductClassificationInfo> campaignProducts = entry.getValue();
+            String classification = determineCampaignSalesClassification(campaignProducts);
+            salesClassificationMap.put(campaignId2, classification);
+        }
+
+        // Get data for both periods
+        List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(
+                shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, campaignId, kpi);
+
+        // Early filter based on sales classification if needed
+        if (salesClassification != null && !salesClassification.isBlank()) {
+            period1DataList = period1DataList.stream()
+                    .filter(data -> {
+                        String actualClassification = salesClassificationMap.get(data.getCampaignId());
+                        return salesClassification.equalsIgnoreCase(actualClassification);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        if (period1DataList.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        // Get period 2 data only for campaigns that have been filtered
+        Set<Long> filteredCampaignIds = period1DataList.stream()
+                .map(ProductAdsResponseDto::getCampaignId)
+                .collect(Collectors.toSet());
+
+        Map<Long, ProductAdsResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(
+                shopId, biddingStrategy, type, state, productPlacement, title, from2, to2, campaignId, kpi)
+                .stream()
+                .filter(data -> filteredCampaignIds.contains(data.getCampaignId()))
+                .collect(Collectors.toMap(ProductAdsResponseDto::getCampaignId, Function.identity()));
+
+        // Process remaining data
+        Map<Long, Double> customRoasMap1 = getCustomRoasForPeriod(shopId, from1, to1);
+        Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
+
+        List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream()
+                .map(period1Data -> {
+                    ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
+
+                    processCustomRoas(period1Data, customRoasMap1.get(period1Data.getCampaignId()), kpi);
+                    if (period2Data != null) {
+                        processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
+                    }
+
+                    // Set sales classification from pre-calculated map
+                    String calculatedSalesClassification = salesClassificationMap.get(period1Data.getCampaignId());
+                    period1Data.setSalesClassification(calculatedSalesClassification);
+
+                    populateComparisonFields(period1Data, period2Data);
+
+                    return ProductAdsResponseWrapperDto.builder()
+                            .campaignId(period1Data.getCampaignId())
+                            .from1(from1)
+                            .to1(to1)
+                            .from2(from2)
+                            .to2(to2)
+                            .data(Collections.singletonList(period1Data))
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        // Pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), resultList.size());
+        if (start > resultList.size()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, resultList.size());
+        }
+        return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
+    }
+
+
+//    @Override
+//    public Page<ProductAdsResponseWrapperDto> findByRangeAggTotal(
+//            String shopId,
+//            String biddingStrategy,
+//            LocalDateTime from1,
+//            LocalDateTime to1,
+//            LocalDateTime from2,
+//            LocalDateTime to2,
+//            Pageable pageable,
+//            String type,
+//            String state,
+//            String productPlacement,
+//            String salesClassification,
+//            String title,
+//            Long campaignId
+//    ) {
+//        Merchant merchant = merchantRepository
+//                .findByShopeeMerchantId(shopId)
+//                .orElseThrow(() -> new RuntimeException("Merchant not found: " + shopId));
+//        KPI kpi = kpiRepository
+//                .findByMerchantId(merchant.getId())
+//                .orElseThrow(() -> new RuntimeException("KPI not found for merchant " + merchant.getId()));
+//
+//        Map<Long, Double> customRoasMap1 = getCustomRoasForPeriod(shopId, from1, to1);
+//        Map<Long, Double> customRoasMap2 = getCustomRoasForPeriod(shopId, from2, to2);
+//
+//        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
+//        Map<Long, Map<Long, Long>> campaignProductRevenueMap = getCampaignProductRevenueForPeriod(shopId, from1, to1);
+//
+//        List<ProductAdsResponseDto> period1DataList = getAggregatedDataByCampaignForRange(
+//                shopId, biddingStrategy, type, state, productPlacement, title, from1, to1, campaignId, kpi);
+//
+//        Map<Long, ProductAdsResponseDto> period2DataMap = getAggregatedDataByCampaignForRange(
+//                shopId, biddingStrategy, type, state, productPlacement, title, from2, to2, campaignId, kpi)
+//                .stream()
+//                .collect(Collectors.toMap(ProductAdsResponseDto::getCampaignId, Function.identity()));
+//
+//        if (period1DataList.isEmpty()) {
+//            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+//        }
+//
+//        List<ProductAdsResponseWrapperDto> resultList = period1DataList.stream()
+//                .map(period1Data -> {
+//                    ProductAdsResponseDto period2Data = period2DataMap.get(period1Data.getCampaignId());
+//
+//                    processCustomRoas(period1Data, customRoasMap1.get(period1Data.getCampaignId()), kpi);
+//                    if (period2Data != null) {
+//                        processCustomRoas(period2Data, customRoasMap2.get(period2Data.getCampaignId()), kpi);
+//                    }
+//
+//                    Long cId = period1Data.getCampaignId();
+//                    Map<Long, Long> productRevenues = campaignProductRevenueMap.get(cId);
+//                    String calculatedSalesClassification = determineSalesClassification(productRevenues, totalRevenue);
+//                    period1Data.setSalesClassification(calculatedSalesClassification);
+//
+//                    populateComparisonFields(period1Data, period2Data);
+//
+//                    return ProductAdsResponseWrapperDto.builder()
+//                            .campaignId(period1Data.getCampaignId())
+//                            .from1(from1)
+//                            .to1(to1)
+//                            .from2(from2)
+//                            .to2(to2)
+//                            .data(Collections.singletonList(period1Data))
+//                            .build();
+//                })
+//                .filter(wrapper -> {
+//                    if (salesClassification == null || salesClassification.isBlank()) {
+//                        return true; // Tidak ada filter, tampilkan semua
+//                    }
+//
+//                    String actualSalesClassification = wrapper.getData().get(0).getSalesClassification();
+//
+//                    // Case-insensitive comparison
+//                    return salesClassification.equalsIgnoreCase(actualSalesClassification);
+//                })
+//                .collect(Collectors.toList());
+//
+//        // Pagination setelah filtering
+//        int start = (int) pageable.getOffset();
+//        int end = Math.min((start + pageable.getPageSize()), resultList.size());
+//        if (start > resultList.size()) {
+//            return new PageImpl<>(Collections.emptyList(), pageable, resultList.size());
+//        }
+//        return new PageImpl<>(resultList.subList(start, end), pageable, resultList.size());
+//    }
 
     // ALTERNATIVE APPROACH: Separate filter method untuk reusability
     private List<ProductAdsResponseWrapperDto> applySalesClassificationFilter(
