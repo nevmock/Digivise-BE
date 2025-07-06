@@ -27,6 +27,44 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    private void assignSalesClassification(
+            List<ProductPerformanceResponseDto> dataList,
+            Map<Long, Long> productRevenueMap
+    ) {
+        if (dataList.isEmpty()) {
+            return;
+        }
+
+        // Create list of products with revenue
+        List<Map.Entry<ProductPerformanceResponseDto, Long>> productRevenueList = new ArrayList<>();
+        long filteredTotalRevenue = 0;
+        for (ProductPerformanceResponseDto dto : dataList) {
+            Long revenue = productRevenueMap.getOrDefault(dto.getProductId(), 0L);
+            productRevenueList.add(new AbstractMap.SimpleEntry<>(dto, revenue));
+            filteredTotalRevenue += revenue;
+        }
+
+        // Sort by revenue descending
+        productRevenueList.sort((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()));
+
+        double cumulative = 0.0;
+        for (Map.Entry<ProductPerformanceResponseDto, Long> entry : productRevenueList) {
+            Long revenue = entry.getValue();
+            double percentage = (filteredTotalRevenue > 0) ? (double) revenue / filteredTotalRevenue : 0;
+            cumulative += percentage;
+
+            String classification;
+            if (cumulative <= 0.5) {
+                classification = "Fast Moving";
+            } else if (cumulative <= 0.8) { // 50% + 30%
+                classification = "Middle Moving";
+            } else {
+                classification = "Slow Moving";
+            }
+            entry.getKey().setSalesClassification(classification);
+        }
+    }
+
     @Override
     public Page<ProductPerformanceWrapperDto> findByRange(
             String shopId,
@@ -40,17 +78,22 @@ public class ProductPerformanceServiceImpl implements ProductPerformanceService 
             Pageable pageable
     ) {
 
-        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
+//        Long totalRevenue = getTotalRevenueForPeriod(shopId, from1, to1);
+//        Map<Long, Long> productRevenueMap = getProductRevenueForPeriod(shopId, from1, to1);
         Map<Long, Long> productRevenueMap = getProductRevenueForPeriod(shopId, from1, to1);
 
         List<ProductPerformanceResponseDto> period1DataList = getAggregatedDataByProductForRange(
                 shopId, name, status, null, from1, to1
         );
 
-        period1DataList.forEach(dto -> {
-            Long revenue = productRevenueMap.get(dto.getProductId());
-            dto.setSalesClassification(determineSalesClassification(revenue, totalRevenue));
-        });
+        assignSalesClassification(period1DataList, productRevenueMap);
+
+
+//
+//        period1DataList.forEach(dto -> {
+//            Long revenue = productRevenueMap.get(dto.getProductId());
+//        });
+
 
         if (salesClassification != null && !salesClassification.trim().isEmpty()) {
             period1DataList = period1DataList.stream()
