@@ -288,7 +288,8 @@ public class ProductStockServiceImpl implements ProductStockService {
             String username,
             String type,
             boolean isAsc,
-            int pageSize
+            int pageSize,
+            int targetPage
     ) {
         final String URL = "http://103.150.116.30:1337/api/v1/shopee-seller/stock-live";
 
@@ -304,7 +305,8 @@ public class ProductStockServiceImpl implements ProductStockService {
         requestBody.put("username", merchant.getUsername());
         requestBody.put("type", type);
         requestBody.put("isAsc", String.valueOf(isAsc));
-        requestBody.put("pageSize", String.valueOf(pageSize));
+        requestBody.put("pageSize", pageSize);
+        requestBody.put("targetPage", targetPage);
 
 
         ObjectMapper objectMapper = new ObjectMapper();

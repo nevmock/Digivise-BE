@@ -48,6 +48,7 @@ ProductStockResponseWrapperDto fetchStockLive(
         String username,
         String type,
         boolean isAsc,
-        int pageSize
+        int pageSize,
+        int targetPage
 ) throws IOException, InterruptedException;
 }

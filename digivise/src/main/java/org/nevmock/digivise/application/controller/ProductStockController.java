@@ -48,11 +48,12 @@ public class ProductStockController {
             //@RequestParam String username,
             @RequestParam String shopId,
             @RequestParam String type,
+            @RequestParam(defaultValue = "1") int targetPage,
             @RequestParam(defaultValue = "true") boolean isAsc,
             @RequestParam(defaultValue = "10") int pageSize
     ) {
         try {
-            return ResponseEntity.ok(productStockService.fetchStockLive(shopId, type, isAsc, pageSize));
+            return ResponseEntity.ok(productStockService.fetchStockLive(shopId, type, isAsc, pageSize, targetPage));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
         }
