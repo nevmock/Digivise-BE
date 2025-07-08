@@ -28,22 +28,17 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.zip.GZIPInputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -331,32 +326,18 @@ public class ProductStockServiceImpl implements ProductStockService {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(URL))
                 .header("Content-Type", "application/json")
-                .header("Accept-Encoding", "gzip")       // ← minta gzip
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .method("GET", HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-
-        HttpResponse<InputStream> respStream = null;
+        HttpResponse<String> response;
         try {
-            respStream = httpClient.send(request,
-                    HttpResponse.BodyHandlers.ofInputStream());
-        }
-        catch (IOException | InterruptedException e) {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Error sending HTTP request", e);
         }
 
-        String respBody = null;
-
-        try (GZIPInputStream gis = new GZIPInputStream(respStream.body());
-             InputStreamReader isr = new InputStreamReader(gis, StandardCharsets.UTF_8);
-             BufferedReader br = new BufferedReader(isr)) {
-
-            respBody = br.lines().collect(Collectors.joining("\n"));
-        } catch (IOException e) {
-            throw new RuntimeException("Error reading response body", e);
-        }
-
-        int status = respStream.statusCode();
+        String respBody = response.body();
+        int status = response.statusCode();
 
         if (status == 200) {
             try {
