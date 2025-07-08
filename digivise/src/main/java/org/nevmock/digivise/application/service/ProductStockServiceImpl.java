@@ -310,7 +310,6 @@ public class ProductStockServiceImpl implements ProductStockService {
         requestBody.put("isAsc", isAsc);
         requestBody.put("pageSize", pageSize);
         requestBody.put("targetPage", targetPage);
-        requestBody.put("searchKeyword", searchKeyword);
 
         ObjectMapper objectMapper = new ObjectMapper()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -327,6 +326,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .uri(URI.create(URL))
                 .header("Content-Type", "application/json")
                 .method("GET", HttpRequest.BodyPublishers.ofString(jsonBody))
+                .header("Accept-Encoding", "identity")
                 .build();
 
         HttpResponse<String> response;
@@ -337,6 +337,7 @@ public class ProductStockServiceImpl implements ProductStockService {
         }
 
         String respBody = response.body();
+        System.out.println("Response Body: " + respBody); // Debugging output
         int status = response.statusCode();
 
         if (status == 200) {
@@ -351,35 +352,16 @@ public class ProductStockServiceImpl implements ProductStockService {
 
                 return ProductStockResponseWrapperDto.builder()
                         .data(productDtos)
-                        // ... set field lain jika perlu
                         .build();
 
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Error parsing JSON response: " + respBody, e);
             }
         } else {
-            // Log full response body biar jelas kenapa fail
             throw new RuntimeException("API request failed (status=" + status + "): " + respBody);
         }
     }
 
-
-//    private ProductStockResponseDto mapProductNode(JsonNode product) {
-//        return ProductStockResponseDto.builder()
-//                .id(product.path("id").asText())
-//                .productId(product.path("id").asLong())
-//                .name(product.path("name").asText())
-//                .status(product.path("status").asInt())
-//                .coverImage(product.path("cover_image").asText())
-//                .parentSku(product.path("parent_sku").asText())
-//                .priceMin(product.path("price_detail").path("price_min").asDouble())
-//                .priceMax(product.path("price_detail").path("price_max").asDouble())
-//                .totalAvailableStock(product.path("stock_detail").path("total_available_stock").asInt())
-//                .totalSellerStock(product.path("stock_detail").path("total_seller_stock").asInt())
-//                .modelStocks(mapModelStocks(product.path("model_list")))
-//                // Add other fields based on your DTO structure
-//                .build();
-//    }
     private String getSalesAvailability(List<ModelStockDto> modelStocks) {
         int availableCount = 0;
 
