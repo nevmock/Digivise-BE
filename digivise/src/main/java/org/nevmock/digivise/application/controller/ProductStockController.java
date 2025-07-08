@@ -54,7 +54,9 @@ public class ProductStockController {
             @RequestParam(required = false) String searchKeyword
     ) {
         try {
-            return ResponseEntity.ok(productStockService.fetchStockLive(shopId, type, isAsc, pageSize, targetPage, searchKeyword));
+            ResponseEntity<ProductStockResponseWrapperDto> stuff = ResponseEntity.ok(productStockService.fetchStockLive(shopId, type, isAsc, pageSize, targetPage, searchKeyword));
+
+            return stuff;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
         }

@@ -1,5 +1,6 @@
 package org.nevmock.digivise.application.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,17 +28,22 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -294,6 +300,7 @@ public class ProductStockServiceImpl implements ProductStockService {
     ) {
         final String URL = "http://103.150.116.30:1337/api/v1/shopee-seller/stock-live";
 
+        // Ambil merchant
         Merchant merchant = merchantRepository.findByShopeeMerchantId(username)
                 .orElseThrow(() -> new RuntimeException("Merchant not found for username: " + username));
 
@@ -301,67 +308,80 @@ public class ProductStockServiceImpl implements ProductStockService {
             throw new RuntimeException("Merchant username is not set for: " + username);
         }
 
+        // Siapkan body JSON
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("username", merchant.getUsername());
         requestBody.put("type", type);
-        requestBody.put("isAsc", String.valueOf(isAsc));
+        requestBody.put("isAsc", isAsc);
         requestBody.put("pageSize", pageSize);
         requestBody.put("targetPage", targetPage);
         requestBody.put("searchKeyword", searchKeyword);
 
+        ObjectMapper objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         String jsonBody;
         try {
             jsonBody = objectMapper.writeValueAsString(requestBody);
-        } catch (IOException e) {
-            throw new RuntimeException("Error converting request body to JSON", e);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error serializing request body", e);
         }
-        HttpClient httpClient = HttpClient.newHttpClient();
 
+        HttpClient httpClient = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(URL))
                 .header("Content-Type", "application/json")
-                .method("GET", HttpRequest.BodyPublishers.ofString(jsonBody))
+                .header("Accept-Encoding", "gzip")       // ← minta gzip
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        HttpResponse<String> response;
 
+        HttpResponse<InputStream> respStream = null;
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            System.err.println("Error sending HTTP request: " + e.getMessage());
+            respStream = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofInputStream());
+        }
+        catch (IOException | InterruptedException e) {
             throw new RuntimeException("Error sending HTTP request", e);
         }
 
+        String respBody = null;
 
-        if (response.statusCode() == HttpStatus.OK.value()) {
-            ObjectMapper mapper = new ObjectMapper();
+        try (GZIPInputStream gis = new GZIPInputStream(respStream.body());
+             InputStreamReader isr = new InputStreamReader(gis, StandardCharsets.UTF_8);
+             BufferedReader br = new BufferedReader(isr)) {
+
+            respBody = br.lines().collect(Collectors.joining("\n"));
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading response body", e);
+        }
+
+        int status = respStream.statusCode();
+
+        if (status == 200) {
             try {
-                JsonNode root = mapper.readTree(response.body());
-                JsonNode products = root.path("data").path("data").path("products");
+                JsonNode root = objectMapper.readTree(respBody);
+                JsonNode products = root.path("data").path("products");
 
                 List<ProductStockResponseDto> productDtos = new ArrayList<>();
-
-                for (JsonNode product : products) {
-                    ProductStockResponseDto dto = mapProductNode(product);
-                    productDtos.add(dto);
+                for (JsonNode node : products) {
+                    productDtos.add(mapProductNode(node));
                 }
 
-                // Build Wrapper DTO
                 return ProductStockResponseWrapperDto.builder()
                         .data(productDtos)
-                        // Set other fields as needed
+                        // ... set field lain jika perlu
                         .build();
 
-            } catch (Exception e) {
-                throw new RuntimeException("Error parsing response", e);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Error parsing JSON response: " + respBody, e);
             }
         } else {
-            throw new RuntimeException("API request failed: ");
+            // Log full response body biar jelas kenapa fail
+            throw new RuntimeException("API request failed (status=" + status + "): " + respBody);
         }
     }
+
 
 //    private ProductStockResponseDto mapProductNode(JsonNode product) {
 //        return ProductStockResponseDto.builder()
