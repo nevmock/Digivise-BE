@@ -289,7 +289,8 @@ public class ProductStockServiceImpl implements ProductStockService {
             String type,
             boolean isAsc,
             int pageSize,
-            int targetPage
+            int targetPage,
+            String searchKeyword
     ) {
         final String URL = "http://103.150.116.30:1337/api/v1/shopee-seller/stock-live";
 
@@ -300,13 +301,13 @@ public class ProductStockServiceImpl implements ProductStockService {
             throw new RuntimeException("Merchant username is not set for: " + username);
         }
 
-        // 1. Setup Request Body
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("username", merchant.getUsername());
         requestBody.put("type", type);
         requestBody.put("isAsc", String.valueOf(isAsc));
         requestBody.put("pageSize", pageSize);
         requestBody.put("targetPage", targetPage);
+        requestBody.put("searchKeyword", searchKeyword);
 
 
         ObjectMapper objectMapper = new ObjectMapper();
