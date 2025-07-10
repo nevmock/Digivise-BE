@@ -40,6 +40,8 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+
 @Service
 @RequiredArgsConstructor
 public class ProductStockServiceImpl implements ProductStockService {
@@ -59,11 +61,11 @@ public class ProductStockServiceImpl implements ProductStockService {
     ) {
         List<AggregationOperation> ops = new ArrayList<>();
 
-        
+
         Instant fromInstant = from != null ? from.atZone(ZoneId.systemDefault()).toInstant() : null;
         Instant toInstant = to != null ? to.atZone(ZoneId.systemDefault()).toInstant() : null;
 
-        
+
         Criteria criteria = Criteria.where("shop_id").is(shopId);
         Criteria dateRange = Criteria.where("createdAt");
         if (fromInstant != null) {
@@ -75,33 +77,33 @@ public class ProductStockServiceImpl implements ProductStockService {
         if (fromInstant != null || toInstant != null) {
             criteria.andOperator(dateRange);
         }
-        ops.add(Aggregation.match(criteria));
+        ops.add(match(criteria));
 
-        
-        ops.add(Aggregation.unwind("data"));
 
-        
+        ops.add(unwind("data"));
+
+
         if (name != null && !name.trim().isEmpty()) {
             Criteria nameFilter = Criteria.where("data.name")
                     .regex(".*" + name.trim() + ".*", "i");
-            ops.add(Aggregation.match(nameFilter));
+            ops.add(match(nameFilter));
         }
 
-        
-        ops.add(Aggregation.sort(Sort.Direction.DESC, "createdAt"));
 
-        
+        ops.add(sort(Sort.Direction.DESC, "createdAt"));
+
+
         ops.add(Aggregation.group("data.id")
                 .first("$$ROOT").as("latestRecord")
         );
 
-        
+
         ProjectionOperation projectOperation = Aggregation.project()
                 .and("latestRecord._id").as("id")
                 .and("latestRecord.uuid").as("uuid")
                 .and("latestRecord.createdAt").as("createdAt")
                 .and("latestRecord.shop_id").as("shopId")
-                .and("_id").as("productId") 
+                .and("_id").as("productId")
                 .and("latestRecord.data.name").as("name")
                 .and("latestRecord.data.status").as("status")
                 .and("latestRecord.data.cover_image").as("coverImage")
@@ -150,21 +152,21 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .and("latestRecord.data.appeal_info.ipr_appeal_info.can_not_appeal_transify_key").as("canNotAppealTransifyKey")
                 .and("latestRecord.data.appeal_info.ipr_appeal_info.reference_id").as("referenceId")
                 .and("latestRecord.data.appeal_info.ipr_appeal_info.appeal_status").as("appealStatus")
-                .and("latestRecord.data.model_list").as("modelList"); 
+                .and("latestRecord.data.model_list").as("modelList");
 
         ops.add(projectOperation);
 
-        
+
         Aggregation countAggregation = Aggregation.newAggregation(ops);
         long total = mongoTemplate.aggregate(countAggregation, "ProductStock", Document.class)
                 .getMappedResults().size();
 
-        
+
         ops.add(Aggregation.skip(pageable.getOffset()));
         ops.add(Aggregation.limit(pageable.getPageSize()));
 
         Aggregation aggregation = Aggregation.newAggregation(ops);
-        System.out.println("Aggregation Pipeline: " + aggregation); 
+        System.out.println("Aggregation Pipeline: " + aggregation);
 
         AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "ProductStock", Document.class);
         List<Document> mappedResults = results.getMappedResults();
@@ -173,7 +175,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
 
-        
+
         List<ProductStockResponseWrapperDto> wrappers = dtos.stream()
                 .map(dto -> ProductStockResponseWrapperDto.builder()
                         .productId(dto.getProductId())
@@ -188,6 +190,297 @@ public class ProductStockServiceImpl implements ProductStockService {
 
         return new PageImpl<>(wrappers, pageable, total);
     }
+
+    public boolean crawlStock(
+            String shopId
+    ) {
+        final String URL = "http://103.150.116.30:1337/api/v1/shopee-seller/product-stock";
+
+        // Ambil merchant
+        Merchant merchant = merchantRepository.findByShopeeMerchantId(shopId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found for username: " + shopId));
+
+        if (merchant.getUsername() == null || merchant.getUsername().isEmpty()) {
+            throw new RuntimeException("Merchant username is not set for: " + shopId);
+        }
+
+        // Siapkan body JSON
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("username", merchant.getUsername());
+
+        ObjectMapper objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+        String jsonBody;
+        try {
+            jsonBody = objectMapper.writeValueAsString(requestBody);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error serializing request body", e);
+        }
+
+        HttpClient httpClient = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(URL))
+                .header("Content-Type", "application/json")
+                .method("GET", HttpRequest.BodyPublishers.ofString(jsonBody))
+                .header("Accept-Encoding", "identity")
+                .build();
+
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Error sending HTTP request", e);
+        }
+
+        String respBody = response.body();
+        System.out.println("Response Body: " + respBody); // Debugging output
+        int status = response.statusCode();
+
+        if (status != 200) {
+            return false;
+        }
+
+        else {
+            return true;
+        }
+    }
+
+
+    @Override
+    public Page<ProductStockResponseWrapperDto> findNewest(
+            String shopId,
+            String name,
+            String state,
+            Pageable pageable
+    ) {
+
+        if (!crawlStock(shopId)) {
+            return null;
+        }
+
+
+        List<AggregationOperation> ops = new ArrayList<>();
+
+        // Filter berdasarkan shopId saja
+        Criteria criteria = Criteria.where("shop_id").is(shopId);
+        ops.add(match(criteria));
+
+        // Unwind data array
+        ops.add(unwind("data"));
+
+        // Filter berdasarkan name jika ada
+        if (name != null && !name.trim().isEmpty()) {
+            Criteria nameFilter = Criteria.where("data.name")
+                    .regex(".*" + name.trim() + ".*", "i");
+            ops.add(match(nameFilter));
+        }
+
+        // Sort berdasarkan createdAt descending
+        ops.add(sort(Sort.Direction.DESC, "createdAt"));
+
+        // Group by product id untuk mendapatkan record terbaru
+        ops.add(Aggregation.group("data.id")
+                .first("$$ROOT").as("latestRecord")
+        );
+
+        // Project operation (sama seperti findByRange)
+        ProjectionOperation projectOperation = Aggregation.project()
+                .and("latestRecord._id").as("id")
+                .and("latestRecord.uuid").as("uuid")
+                .and("latestRecord.createdAt").as("createdAt")
+                .and("latestRecord.shop_id").as("shopId")
+                .and("_id").as("productId")
+                .and("latestRecord.data.name").as("name")
+                .and("latestRecord.data.status").as("status")
+                .and("latestRecord.data.cover_image").as("coverImage")
+                .and("latestRecord.data.parent_sku").as("parentSku")
+                .and("latestRecord.data.price_detail.price_min").as("priceMin")
+                .and("latestRecord.data.price_detail.price_max").as("priceMax")
+                .and("latestRecord.data.price_detail.has_discount").as("hasDiscount")
+                .and("latestRecord.data.price_detail.max_discount_percentage").as("maxDiscountPercentage")
+                .and("latestRecord.data.price_detail.max_discount").as("maxDiscount")
+                .and("latestRecord.data.price_detail.selling_price_min").as("sellingPriceMin")
+                .and("latestRecord.data.price_detail.selling_price_max").as("sellingPriceMax")
+                .and("latestRecord.data.stock_detail.total_available_stock").as("totalAvailableStock")
+                .and("latestRecord.data.stock_detail.total_seller_stock").as("totalSellerStock")
+                .and("latestRecord.data.stock_detail.total_shopee_stock").as("totalShopeeStock")
+                .and("latestRecord.data.stock_detail.low_stock_status").as("lowStockStatus")
+                .and("latestRecord.data.stock_detail.enable_stock_reminder").as("enableStockReminder")
+                .and("latestRecord.data.stock_detail.model_seller_stock_sold_out").as("modelSellerStockSoldOut")
+                .and("latestRecord.data.stock_detail.model_shopee_stock_sold_out").as("modelShopeeStockSoldOut")
+                .and("latestRecord.data.stock_detail.advanced_stock.sellable_stock").as("advancedSellableStock")
+                .and("latestRecord.data.stock_detail.advanced_stock.in_transit_stock").as("advancedInTransitStock")
+                .and("latestRecord.data.stock_detail.enable_stock_reminder_status").as("enableStockReminderStatus")
+                .and("latestRecord.data.promotion.wholesale").as("wholesale")
+                .and("latestRecord.data.promotion.has_bundle_deal").as("hasBundleDeal")
+                .and("latestRecord.data.statistics.view_count").as("viewCount")
+                .and("latestRecord.data.statistics.liked_count").as("likedCount")
+                .and("latestRecord.data.statistics.sold_count").as("soldCount")
+                .and("latestRecord.data.tag.is_virtual_sku").as("isVirtualSku")
+                .and("latestRecord.data.tag.unlist").as("unlist")
+                .and("latestRecord.data.tag.has_discount").as("hasDiscountTag")
+                .and("latestRecord.data.tag.wholesale").as("wholesaleTag")
+                .and("latestRecord.data.tag.has_bundle_deal").as("hasBundleDealTag")
+                .and("latestRecord.data.tag.has_add_on_deal").as("hasAddOnDeal")
+                .and("latestRecord.data.tag.live_sku").as("liveSku")
+                .and("latestRecord.data.tag.ssp").as("ssp")
+                .and("latestRecord.data.tag.has_ams_commission").as("hasAmsCommission")
+                .and("latestRecord.data.tag.member_exclusive").as("memberExclusive")
+                .and("latestRecord.data.tag.is_ipr_appealing").as("isIprAppealing")
+                .and("latestRecord.data.boost_info.boost_entry_status").as("boostEntryStatus")
+                .and("latestRecord.data.boost_info.show_boost_history").as("showBoostHistory")
+                .and("latestRecord.data.boost_info.campaign_id").as("boostCampaignId")
+                .and("latestRecord.data.modify_time").as("modifyTime")
+                .and("latestRecord.data.create_time").as("createTime")
+                .and("latestRecord.data.scheduled_publish_time").as("scheduledPublishTime")
+                .and("latestRecord.data.mtsku_item_id").as("mtskuItemId")
+                .and("latestRecord.data.appeal_info.ipr_appeal_info.appeal_opt").as("appealOpt")
+                .and("latestRecord.data.appeal_info.ipr_appeal_info.can_not_appeal_transify_key").as("canNotAppealTransifyKey")
+                .and("latestRecord.data.appeal_info.ipr_appeal_info.reference_id").as("referenceId")
+                .and("latestRecord.data.appeal_info.ipr_appeal_info.appeal_status").as("appealStatus")
+                .and("latestRecord.data.model_list").as("modelList");
+
+        ops.add(projectOperation);
+
+        // Hitung total untuk pagination
+        Aggregation countAggregation = Aggregation.newAggregation(ops);
+        long total = mongoTemplate.aggregate(countAggregation, "ProductStock", Document.class)
+                .getMappedResults().size();
+
+        // Pagination
+        ops.add(Aggregation.skip(pageable.getOffset()));
+        ops.add(Aggregation.limit(pageable.getPageSize()));
+
+        Aggregation aggregation = Aggregation.newAggregation(ops);
+        AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "ProductStock", Document.class);
+        List<Document> mappedResults = results.getMappedResults();
+
+        // Get product revenues untuk sales classification
+        Map<Long, Long> productRevenues = getNewestProductRevenues(shopId);
+        long totalRevenue = productRevenues.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+        Map<Long, String> productClassificationMap = classifyProducts(productRevenues, totalRevenue);
+
+        List<ProductStockResponseDto> dtos = mappedResults.stream()
+                .map(doc -> {
+                    ProductStockResponseDto dto = mapToDto(doc);
+                    // Set sales classification
+                    String classification = productClassificationMap.getOrDefault(dto.getProductId(), "No Data");
+                    dto.setSalesClassification(classification);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        List<ProductStockResponseWrapperDto> wrappers = dtos.stream()
+                .map(dto -> ProductStockResponseWrapperDto.builder()
+                        .productId(dto.getProductId())
+                        .shopId(shopId)
+                        .from1(null)
+                        .to1(null)
+                        .from2(null)
+                        .to2(null)
+                        .data(Collections.singletonList(dto))
+                        .build())
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(wrappers, pageable, total);
+    }
+
+    // Method untuk mendapatkan revenue produk dari data terbaru
+    private Map<Long, Long> getNewestProductRevenues(String shopId) {
+        List<AggregationOperation> ops = new ArrayList<>();
+
+        // Filter berdasarkan shopId
+        ops.add(match(Criteria.where("shop_id").is(shopId)));
+
+        // Unwind data array
+        ops.add(unwind("data"));
+
+        // Sort berdasarkan createdAt descending
+        ops.add(sort(Sort.Direction.DESC, "createdAt"));
+
+        // Group by product id untuk mendapatkan record terbaru
+        ops.add(group("data.id")
+                .first("$$ROOT").as("latestRecord")
+        );
+
+        // Project untuk mendapatkan data yang diperlukan
+        ops.add(project()
+                .and("_id").as("productId")
+                .and(ConvertOperators.valueOf("latestRecord.data.statistics.sold_count")
+                        .convertToInt()).as("soldCount")
+                .and(ConvertOperators.valueOf("latestRecord.data.price_detail.selling_price_max")
+                        .convertToDouble()).as("sellingPriceMax")
+        );
+
+        // Calculate revenue
+        ops.add(project()
+                .and("productId").as("productId")
+                .and(ArithmeticOperators.Multiply.valueOf("sellingPriceMax").multiplyBy("soldCount")).as("revenue")
+        );
+
+        // Sort by revenue descending
+        ops.add(sort(Sort.by(Sort.Direction.DESC, "revenue")));
+
+        ops.add(project()
+                .and("productId").as("productId")
+                .and("revenue").as("revenue")
+        );
+
+        AggregationResults<Document> results = mongoTemplate.aggregate(
+                newAggregation(ops), "ProductStock", Document.class);
+
+        Map<Long, Long> productRevenueMap = new LinkedHashMap<>(); // Maintain sort order
+
+        for (Document doc : results) {
+            Long productId = getLong(doc, "productId");
+            Double revenue = getDouble(doc, "revenue");
+
+            if (productId != null && revenue != null) {
+                long roundedRevenue = revenue.longValue();
+                productRevenueMap.put(productId, roundedRevenue);
+            }
+        }
+
+        return productRevenueMap;
+    }
+
+    // Method untuk klasifikasi produk (copy dari ProductAdsServiceImpl)
+    private Map<Long, String> classifyProducts(Map<Long, Long> productRevenues, long totalRevenue) {
+        Map<Long, String> classificationMap = new HashMap<>();
+
+        if (totalRevenue <= 0) {
+            // If no revenue, mark all as "No Data"
+            productRevenues.keySet().forEach(productId -> classificationMap.put(productId, "No Data"));
+            return classificationMap;
+        }
+
+        long cumulativeRevenue = 0;
+
+        for (Map.Entry<Long, Long> entry : productRevenues.entrySet()) {
+            Long productId = entry.getKey();
+            Long revenue = entry.getValue();
+
+            cumulativeRevenue += revenue;
+            double cumulativePercentage = (double) cumulativeRevenue / totalRevenue;
+
+            String classification;
+            if (cumulativePercentage <= 0.50) {
+                classification = "Fast Moving";
+            } else if (cumulativePercentage <= 0.80) {
+                classification = "Middle Moving";
+            } else {
+                classification = "Slow Moving";
+            }
+
+            classificationMap.put(productId, classification);
+        }
+
+        return classificationMap;
+    }
+
 
     private ProductStockResponseDto mapToDto(Document doc) {
         ProductStockResponseDto dto = ProductStockResponseDto.builder()
@@ -244,6 +537,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .canNotAppealTransifyKey(getString(doc, "canNotAppealTransifyKey"))
                 .referenceId(getLong(doc, "referenceId"))
                 .appealStatus(getInteger(doc, "appealStatus"))
+                .salesClassification(getString(doc, "salesClassification"))
 
                 .build();
 

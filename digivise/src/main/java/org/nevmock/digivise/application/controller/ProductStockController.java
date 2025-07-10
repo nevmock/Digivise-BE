@@ -61,5 +61,17 @@ public class ProductStockController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+
+    @GetMapping("/newest")
+    public ResponseEntity<Page<ProductStockResponseWrapperDto>> getNewestProductStock(
+            @RequestParam String shopId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String state
+    ) {
+        PageRequest pageRequest = PageRequest.of(page, limit);
+        return ResponseEntity.ok(productStockService.findNewest(shopId, name, state, pageRequest));
+    }
 }
 

@@ -52,4 +52,11 @@ ProductStockResponseWrapperDto fetchStockLive(
         int targetPage,
         String searchKeyword
 ) throws IOException, InterruptedException;
+
+Page<ProductStockResponseWrapperDto> findNewest(
+            String shopId,
+            String name,
+            String state,
+            Pageable pageable
+    );
 }
