@@ -248,16 +248,21 @@ public class ProductStockServiceImpl implements ProductStockService {
 
 
     @Override
+    public Boolean refreshStock(String shopId) {
+        if (!crawlStock(shopId)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    @Override
     public Page<ProductStockResponseWrapperDto> findNewest(
             String shopId,
             String name,
             String state,
             Pageable pageable
     ) {
-
-        if (!crawlStock(shopId)) {
-            return null;
-        }
 
 
         List<AggregationOperation> ops = new ArrayList<>();

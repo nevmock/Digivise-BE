@@ -73,5 +73,14 @@ public class ProductStockController {
         PageRequest pageRequest = PageRequest.of(page, limit);
         return ResponseEntity.ok(productStockService.findNewest(shopId, name, state, pageRequest));
     }
+
+    @GetMapping("/refresh")
+    public ResponseEntity<Boolean> refreshStock(
+        @RequestParam
+        String shopId
+        ) {
+            return ResponseEntity.ok(productStockService.refreshStock(shopId));
+
+    }
 }
 

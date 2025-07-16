@@ -59,4 +59,6 @@ Page<ProductStockResponseWrapperDto> findNewest(
             String state,
             Pageable pageable
     );
+
+Boolean refreshStock(String shopId);
 }
