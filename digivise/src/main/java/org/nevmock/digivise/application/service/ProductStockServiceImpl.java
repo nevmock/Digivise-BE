@@ -261,6 +261,7 @@ public class ProductStockServiceImpl implements ProductStockService {
             String shopId,
             String name,
             String state,
+            String salesClassification,
             Pageable pageable
     ) {
 
@@ -378,19 +379,38 @@ public class ProductStockServiceImpl implements ProductStockService {
                 })
                 .collect(Collectors.toList());
 
-        List<ProductStockResponseWrapperDto> wrappers = dtos.stream()
+//        List<ProductStockResponseWrapperDto> wrappers = dtos.stream()
+//                .map(dto -> ProductStockResponseWrapperDto.builder()
+//                        .productId(dto.getProductId())
+//                        .shopId(shopId)
+//                        .from1(null)
+//                        .to1(null)
+//                        .from2(null)
+//                        .to2(null)
+//                        .data(Collections.singletonList(dto))
+//                        .build())
+//                .collect(Collectors.toList());
+
+        List<ProductStockResponseDto> filteredDtos = dtos.stream()
+                .filter(dto -> salesClassification == null
+                        || salesClassification.equalsIgnoreCase(dto.getSalesClassification()))
+                .collect(Collectors.toList());
+
+        // Recompute total for pagination
+        long filteredTotal = filteredDtos.size();
+
+        // Wrap back into wrapper DTOs
+        List<ProductStockResponseWrapperDto> wrappers = filteredDtos.stream()
                 .map(dto -> ProductStockResponseWrapperDto.builder()
                         .productId(dto.getProductId())
                         .shopId(shopId)
-                        .from1(null)
-                        .to1(null)
-                        .from2(null)
-                        .to2(null)
+                        .from1(null).to1(null)
+                        .from2(null).to2(null)
                         .data(Collections.singletonList(dto))
                         .build())
                 .collect(Collectors.toList());
 
-        return new PageImpl<>(wrappers, pageable, total);
+        return new PageImpl<>(wrappers, pageable, filteredTotal);
     }
 
     // Method untuk mendapatkan revenue produk dari data terbaru

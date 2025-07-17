@@ -57,6 +57,7 @@ Page<ProductStockResponseWrapperDto> findNewest(
             String shopId,
             String name,
             String state,
+            String salesClassification,
             Pageable pageable
     );
 

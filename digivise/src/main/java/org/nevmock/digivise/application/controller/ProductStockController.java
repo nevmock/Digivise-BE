@@ -68,10 +68,11 @@ public class ProductStockController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) String state
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String salesClassification
     ) {
         PageRequest pageRequest = PageRequest.of(page, limit);
-        return ResponseEntity.ok(productStockService.findNewest(shopId, name, state, pageRequest));
+        return ResponseEntity.ok(productStockService.findNewest(shopId, name, state, salesClassification, pageRequest));
     }
 
     @GetMapping("/refresh")
