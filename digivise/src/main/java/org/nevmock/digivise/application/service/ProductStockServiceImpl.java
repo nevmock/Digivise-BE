@@ -698,7 +698,9 @@ public class ProductStockServiceImpl implements ProductStockService {
             return "0%";
         }
 
-        return (availableCount / modelStocks.size()) * 100 + "%";
+        double ratio = (double) availableCount / modelStocks.size();
+        int percent = (int) Math.round(ratio * 100);
+        return percent + "%";
     }
 
 private ProductStockResponseDto mapProductNode(JsonNode product) {
